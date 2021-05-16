@@ -4,7 +4,7 @@ function [x, y] = PhTh2Mollweide(ph, th)
 MAX_ITER = 1e5;
 TOL = 1e-10;
 
-% Convert theta to longitude.
+% Convert theta to elevation/longitude.
 th = pi/2 - th(:);
 % Wrap ph to +-pi
 ph = wrap2pi(ph(:));

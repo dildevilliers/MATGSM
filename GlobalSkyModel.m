@@ -4,7 +4,7 @@ classdef GlobalSkyModel
     properties (SetAccess = private)
         freq_unit(1,:) char {mustBeMember(freq_unit,{'Hz','kHz','MHz','GHz'})} = 'MHz'
         basemap(1,:) char {mustBeMember(basemap,{'haslam','wmap','5deg'})} = '5deg'
-        interpolation(1,:) char {mustBeMember(interpolation,{'cubic','pchip'})} = 'pchip'
+        interpolation_method(1,:) char {mustBeMember(interpolation_method,{'cubic','pchip'})} = 'pchip'
         
         pca_map_data(:,:)
         interp_comps(1,4) cell
@@ -64,17 +64,17 @@ classdef GlobalSkyModel
             % Updated: 2021-05-13, Dirk de Villiers
             %
             % Tested : Matlab R2020a
-            %  Level : 1
-            %   File : 
+            %  Level : 2
+            %   File : testScript_GSM.m
             %
             % Example
             %   GSM = GlobalSkyModel;
-            
-            warning('This class is a WIP: not all functionality done yet')
+            %   GSM = GSM.generate(408);
+            %   GSM.view(1,true)
             
             if nargin > 0 && ~isempty(freq_unit), obj.freq_unit = freq_unit; end
             if nargin > 1 && ~isempty(basemap), obj.basemap = basemap; end
-            if nargin > 2 && ~isempty(interpolation), obj.interpolation = interpolation; end
+            if nargin > 2 && ~isempty(interpolation), obj.interpolation_method = interpolation; end
             
             % Set the path
             P = fileparts(mfilename('fullpath'));
@@ -119,7 +119,7 @@ classdef GlobalSkyModel
             % Interpolate to the desired frequency values
             ln_pca_freqs = log(obj.pca_freqs_mhz);
             
-            switch obj.interpolation
+            switch obj.interpolation_method
                 case 'cubic'
                     spl_scaling = spline(ln_pca_freqs, log(obj.pca_scaling));
                     spl1 = spline(ln_pca_freqs, [0;obj.pca_comps(:,1);0]);
@@ -186,6 +186,7 @@ classdef GlobalSkyModel
             %         Take the log of the data before plotting. Defaults to
             %         False..
             
+           assert(numel(idx) == 1,'Scalar idx extected') 
            assert(~isempty(obj.generated_map_data),'No GSM map has been generated yet. Run generate() first.')
            if nargin > 1 && ~isempty(idx)
                gmap = obj.generated_map_data(:,idx);
@@ -202,6 +203,28 @@ classdef GlobalSkyModel
            title(['Global Sky Model at ', num2str(freq), ' MHz from the ', obj.basemap, ' map'])
         end
         
+        function write_fits(obj,filename)
+           fitswrite(obj.generated_map_data,filename); 
+        end
+        
+        function obj = set_basemap(obj, new_basemap)
+            obj.basemap = new_basemap;
+            obj = obj.update_interpolants;
+            if ~isempty(obj.generated_map_freqs), obj = obj.generate(obj.generated_map_freqs); end
+        end
+        
+        function obj = set_freq_unit(obj,new_unit)
+            obj.freq_unit = new_unit;
+            obj = obj.update_interpolants;
+            if ~isempty(obj.generated_map_freqs), obj = obj.generate(obj.generated_map_freqs); end
+        end
+        
+        function obj = set_interpolation_method(obj,new_method)
+            obj.interpolation_method = new_method;
+            obj = obj.update_interpolants;
+            if ~isempty(obj.generated_map_freqs), obj = obj.generate(obj.generated_map_freqs); end
+        end
+        
         function plotCompsInterp(obj)
             
             obj = obj.generate(logspace(1,4.99,71));
@@ -211,7 +234,7 @@ classdef GlobalSkyModel
             semilogx(obj.pca_freqs_mhz,obj.pca_scaling,'ko'), grid on, hold on
             plot(obj.generated_map_freqs.*obj.freqScale,obj.generated_interp_comps{1},'k.-')
             ylabel('PCA scaling')
-            title(['Interpolation: ',obj.interpolation])
+            title(['Interpolation: ',obj.interpolation_method])
             subplot 212
             color = 'kbr';
             for pp = 1:3

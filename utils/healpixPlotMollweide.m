@@ -22,7 +22,8 @@ ph = signPhi.*tp(2,:);
 [x, y] = PhTh2Mollweide(ph, th);
 
 gridDelaunay = delaunay(x,y);
-h = trisurf(gridDelaunay,x,y,map*0.0,map);
+% h = trisurf(gridDelaunay,x,y,map*0.0,map);
+h = trisurf(gridDelaunay,x,y,map,map);
 
 set(h, 'LineStyle', 'none')
 axis equal

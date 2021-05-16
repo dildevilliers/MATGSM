@@ -187,7 +187,7 @@ classdef GlobalSkyModel
             %         False..
             
            assert(~isempty(obj.generated_map_data),'No GSM map has been generated yet. Run generate() first.')
-           if nargin > 1 
+           if nargin > 1 && ~isempty(idx)
                gmap = obj.generated_map_data(:,idx);
                freq = obj.generated_map_freqs(idx);
            else
@@ -199,10 +199,24 @@ classdef GlobalSkyModel
            if logged, gmap = log2(gmap); end
            
            healpixPlotMollweide(gmap)
-           title(['Global Sky Model ' % (str(freq), self.basemap)])
-           
-           
-           
+           title(['Global Sky Model at ', num2str(freq), ' MHz from the ', obj.basemap, ' map'])
+        end
+        
+        function write_fits(obj,filename)
+           % ToDo 
+        end
+        
+        function obj = set_basemap(obj, new_basemap)
+            obj.basemap = new_basemap;
+            obj = obj.
+        end
+        
+        function obj = set_freq_unit(obj,new_unit)
+            % ToDo
+        end
+        
+        function obj = set_interpolation_method(obj,new_metod)
+            % ToDo
         end
         
         function plotCompsInterp(obj)
