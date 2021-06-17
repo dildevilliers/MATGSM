@@ -144,7 +144,6 @@ classdef GlobalSkyModel2016 < GlobalSkyModelBase
                 
                 nMap = size(map_out,2);
                 nside = sqrt(nMap./12);
-%                 iRing = nest2ring(nside,1:nMap);
                 iRing = ring2nest(nside,1:nMap);
                 map_out(ff,:) = map_out(ff,iRing);
                 
@@ -161,63 +160,15 @@ classdef GlobalSkyModel2016 < GlobalSkyModelBase
             
             obj.generated_map_freqs = freqs;
             obj.generated_map_data = map_out.';
-            
-            
-            
-%             scale = 1./obj.K_CMB2MJysr(1,1e9.*obj.spec_nf(:,1));
-            scale = 1;
-            amp = (obj.spec_nf(:,2)).*scale;
-%             specNorm = 10.^(obj.spec_nf).*scale;
-            specNorm = (obj.spec_nf);
-%             c1 = specNorm(:,3);
-%             c2 = specNorm(:,4);
-%             c3 = specNorm(:,5);
-%             c4 = specNorm(:,6);
-%             c5 = specNorm(:,7);
-%             c6 = specNorm(:,8);
-            c1 = log10(specNorm(:,3));%.*(median(map_ni_(1,iRing))));
-            c2 = (specNorm(:,4));%.*(median(map_ni_(2,iRing))));
-            c3 = (specNorm(:,5));%.*(median(map_ni_(3,iRing))));
-            c4 = (specNorm(:,6));%.*(median(map_ni_(4,iRing))));
-            c5 = (specNorm(:,7));%.*(median(map_ni_(5,iRing))));
-            c6 = (specNorm(:,8));%.*(median(map_ni_(6,iRing))));
-            subplot 311
-            loglog(obj.spec_nf(:,1),amp,'k.-'), grid on, hold on
-            subplot 312
-            loglog(obj.spec_nf(:,1),obj.spec_nf(:,2).*10.^log10(obj.spec_nf(:,3)),'b.-'), grid on, hold on
-            loglog(obj.spec_nf(:,1),obj.spec_nf(:,2).*10.^obj.spec_nf(:,4),'g.-'), grid on
-            loglog(obj.spec_nf(:,1),obj.spec_nf(:,2).*10.^obj.spec_nf(:,5),'r.-'), grid on
-            loglog(obj.spec_nf(:,1),obj.spec_nf(:,2).*10.^obj.spec_nf(:,6),'c.-'), grid on
-            loglog(obj.spec_nf(:,1),obj.spec_nf(:,2).*10.^obj.spec_nf(:,7),'m.-'), grid on
-            loglog(obj.spec_nf(:,1),obj.spec_nf(:,2).*10.^obj.spec_nf(:,8),'k.-'), grid on
-            subplot 313
-            loglog(obj.spec_nf(:,1),10.^c1,'b.-'), grid on, hold on
-            loglog(obj.spec_nf(:,1),10.^c2,'g.-'), grid on
-            loglog(obj.spec_nf(:,1),10.^c3,'r.-'), grid on
-            loglog(obj.spec_nf(:,1),10.^c4,'c.-'), grid on
-            loglog(obj.spec_nf(:,1),10.^c5,'m.-'), grid on
-            loglog(obj.spec_nf(:,1),10.^c6,'k.-'), grid on
-            
-            figure
-            mapPlot = map_ni_(2,iRing);
-            healpixPlotMollweide(asinh(mapPlot./median(mapPlot)),true)
         end
         
         % Conversion factor functions
         
         function MJysr = K_CMB2MJysr(obj,K_CMB, nu) % in Kelvin and Hz
-%             B_nu = 2.*(obj.h.*nu).*(nu./obj.C).^2./(exp(obj.hoverk.*nu./obj.T) - 1);
-%             conversion_factor = (B_nu.*obj.C./nu./obj.T).^2./2.*exp(obj.hoverk.*nu./obj.T)./obj.kB;
-%             MJysr = K_CMB.*conversion_factor.*1e20; %1e-26 for Jy and 1e6 for MJy
-            
-            % Do below tricks to not saturate the FP precision
             hoverk = obj.h./obj.kB;
-            q = (hoverk.*nu./obj.T);
-            e = exp(q);
-            a = e./(e-1);
-            b = a./(e-1);
-            K_RJ = K_CMB./(q.^2.*b);
-            MJysr = obj.K_RJ2MJysr(K_RJ, nu);
+            B_nu = 2.*(obj.h.*nu).*(nu./obj.C).^2./(exp(hoverk.*nu./obj.T) - 1);
+            conversion_factor = (B_nu.*obj.C./nu./obj.T).^2./2.*exp(hoverk.*nu./obj.T)./obj.kB;
+            MJysr = K_CMB.*conversion_factor.*1e20; %1e-26 for Jy and 1e6 for MJy
         end
         
         function MJysr = K_RJ2MJysr(obj,K_RJ, nu) %in Kelvin and Hz
