@@ -54,7 +54,7 @@ classdef GlobalSkyModelBase
            if logged, gmap = log2(gmap); end
            
            healpixPlotMollweide(gmap)
-           title(['Global Sky Model at ', num2str(freq), ' MHz from the ', obj.basemap, ' map'])
+%            title(['Global Sky Model at ', num2str(freq), ' MHz from the ', obj.basemap, ' map'])
         end
     end
     
