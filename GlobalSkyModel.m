@@ -158,10 +158,6 @@ classdef GlobalSkyModel < GlobalSkyModelBase
             
         end
         
-        function write_fits(obj,filename)
-           fitswrite(obj.generated_map_data,filename); 
-        end
-        
         function obj = set_basemap(obj, new_basemap)
             obj.basemap = new_basemap;
             obj = obj.update_interpolants;

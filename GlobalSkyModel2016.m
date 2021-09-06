@@ -11,10 +11,6 @@ classdef GlobalSkyModel2016 < GlobalSkyModelBase
         spec_nf(:,:)
     end
     
-    properties (SetAccess = private, Hidden = true)
-        
-    end
-    
     properties (Constant = true, Hidden = true)
         kB = 1.38065e-23
         C = 2.99792e8

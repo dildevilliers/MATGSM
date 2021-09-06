@@ -40,9 +40,10 @@ classdef GlobalSkyModelBase
             %         Take the log of the data before plotting. Defaults to
             %         False..
             
-           assert(numel(idx) == 1,'Scalar idx extected') 
+            
            assert(~isempty(obj.generated_map_data),'No GSM map has been generated yet. Run generate() first.')
            if nargin > 1 && ~isempty(idx)
+               assert(numel(idx) == 1,'Scalar idx expected')
                gmap = obj.generated_map_data(:,idx);
                freq = obj.generated_map_freqs(idx);
            else
@@ -55,6 +56,10 @@ classdef GlobalSkyModelBase
            
            healpixPlotMollweide(gmap)
 %            title(['Global Sky Model at ', num2str(freq), ' MHz from the ', obj.basemap, ' map'])
+        end
+        
+        function write_fits(obj,filename)
+           fitswrite(obj.generated_map_data,filename); 
         end
     end
     
