@@ -84,13 +84,13 @@ classdef GlobalSkyModelBase
            end
         end
         
-        function [RAdec] = coor2RAdec(obj)
+        function [RAdec] = coor2RADec(obj)
             % COOR2RADEC returns the [RA,Dec] coordinates of the object
             equCoords = celestial.coo.coco([obj.longlat],'g','j2000.0','r','r');
             RAdec = [wrap22pi(equCoords(:,1)),wrap2pi(equCoords(:,2))]; 
         end
         
-        function [azAlt,UTCtime,location] = coor2hor(obj,UTCtime,location)
+        function [azAlt,UTCime,location] = coor2hor(obj,UTCtime,location)
             % COOR2HOR returns the horizontal (az,alt) coordinates of the
             % object
             % [azAlt,locTime,location] = coor2hor(obj,UTCtime,location)
@@ -102,9 +102,7 @@ classdef GlobalSkyModelBase
             if nargin < 2 || isempty(UTCtime), UTCtime = datetime(2018,1,1,0,0,0); end
             if nargin < 3 || isempty(location), location = [0.3292   -0.5922  300.0000]; end
             
-            julDate = convert.date2jd([UTCtime.Day,UTCtime.Month,UTCtime.Year,UTCtime.Hour,UTCtime.Minute,UTCtime.Second]);
-            horzCoords = wrap2pi(celestial.coo.horiz_coo([obj.coor2RAdec],julDate,location(1:2),'h'));
-            azAlt = horzCoords(:,1:2);
+            
         end
         
         function view(obj, idx, logged)
