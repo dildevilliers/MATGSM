@@ -83,7 +83,7 @@ classdef Haslam < GlobalSkyModelBase
             %     Returns
             %     -------
             %     map_out
-            %     Global sky model in healpix format, with NSIDE=256. Output map
+            %     Global sky model in healpix format, with NSIDE=512. Output map
             %     is in galactic coordinates, and in antenna temperature units (K).
             
             assert(min(size(freqs))  == 1, 'freqs must be vector')

@@ -1,5 +1,6 @@
 classdef GlobalSkyModelBase
-    % Shared base superclass for GlobalSkyModel and GlobalSkyModel2016
+    % Shared base superclass for GlobalSkyModel, GlobalSkyModel2016 and
+    % Haslam classes
     properties (SetAccess = protected)
         freq_unit(1,:) char {mustBeMember(freq_unit,{'Hz','kHz','MHz','GHz'})} = 'MHz'
         generated_map_data(:,:) double = []
@@ -14,6 +15,10 @@ classdef GlobalSkyModelBase
        freqScale 
     end
     
+    properties (Dependent = true)
+        Nside 
+    end
+    
     methods
         function freqScale = get.freqScale(obj)
             switch obj.freq_unit
@@ -26,6 +31,10 @@ classdef GlobalSkyModelBase
                 case 'GHz'
                     freqScale = 1e3;
             end
+        end
+        
+        function Nside = get.Nside(obj)
+            Nside = sqrt(size(obj.generated_map_data,1)./12);
         end
         
         function view(obj, idx, logged)
