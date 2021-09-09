@@ -1,6 +1,13 @@
 classdef GlobalSkyModelBase
     % Shared base superclass for GlobalSkyModel, GlobalSkyModel2016 and
     % Haslam classes
+    properties
+        projectionType = 'm'    % See MAAT toolbox celestial.proj.projectcoo for details (top/bot is direction cosine hemispheres)
+        projectionR = 1         % See MAAT toolbox celestial.proj.projectcoo for details
+        projectionPar1 = []     % See MAAT toolbox celestial.proj.projectcoo for details
+        projectionPar2 = []     % See MAAT toolbox celestial.proj.projectcoo for details
+    end
+    
     properties (SetAccess = protected)
         freq_unit(1,:) char {mustBeMember(freq_unit,{'Hz','kHz','MHz','GHz'})} = 'MHz'
         generated_map_data(:,:) double = []     % Always in galactic coordinates, on a HEALpix ring sampling grid
@@ -9,7 +16,7 @@ classdef GlobalSkyModelBase
     
     properties (SetAccess = private)
         coorSys = 'GalLongLat'        % Can be set to {'Horiz','RAdec','GalLongLat'} setCoorSys
-        location(1,3) double = [0.3292   -0.5922  300.0000]  % Earth location in [rad rad mASL]
+        location(1,3) double = [(-30.721745), (21.411701),  300.0000]  % Earth location in [Lat(deg) Long(deg) mASL]
         UTCtime(1,1) datetime = datetime(2018,1,1,0,0,0)
     end
     
@@ -74,24 +81,25 @@ classdef GlobalSkyModelBase
             if strcmp(obj.coorSys,'Horiz')
                 xyHorizon = [az,alt];
             else
-                xyHorizon = wrap2pi(celestial.coo.horiz_coo([az,alt],obj.julDate,obj.location(1:2),'e'));
+                xyHorizon = wrap2pi(celestial.coo.horiz_coo([az,alt],obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
                 if strcmp(obj.coorSys,'GalLongLat')
                     xyHorizon = celestial.coo.coco(xyHorizon,'j2000.0','g','r','r');
                 end
             end
+            xyHorizon = wrap2pi(xyHorizon);
         end
         
         function xySun = get.xySun(obj)
-            az = linspace(-pi,pi,1001).';
-            alt = zeros(size(az));
-            if strcmp(obj.coorSys,'Horiz')
-                xySun = [az,alt];
-            else
-                xySun = wrap2pi(celestial.coo.horiz_coo([az,alt],obj.julDate,obj.location(1:2),'e'));
-                if strcmp(obj.coorSys,'GalLongLat')
+            sunStruct = celestial.SolarSys.get_sun(obj.julDate,deg2rad(fliplr(obj.location(1:2))));
+            xySun = [sunStruct.RA,sunStruct.Dec];
+            switch obj.coorSys
+                case 'Horiz'
+                    xySun = [sunStruct.Az,sunStruct.Alt];
+                case 'GalLongLat'
                     xySun = celestial.coo.coco(xySun,'j2000.0','g','r','r');
-                end
             end
+            xySun = wrap2pi(xySun);
+            
         end
         
         function julDate = get.julDate(obj)
@@ -128,7 +136,7 @@ classdef GlobalSkyModelBase
                 equCoords = celestial.coo.coco([obj.longlat],'g','j2000.0','r','r');
                 obj.xy = [wrap2pi(equCoords(:,1)),wrap2pi(equCoords(:,2))];
                 if strcmp(coorSys,'Horiz')  % Update if needed
-                    horzCoords = wrap2pi(celestial.coo.horiz_coo([obj.xy],obj.julDate,obj.location(1:2),'h'));
+                    horzCoords = wrap2pi(celestial.coo.horiz_coo([obj.xy],obj.julDate,deg2rad(fliplr(obj.location(1:2))),'h'));
                     obj.xy = horzCoords(:,1:2);
                 end
             end
@@ -160,51 +168,61 @@ classdef GlobalSkyModelBase
            end
         end
         
-%         function [RAdec] = coor2RAdec(obj)
-%             % COOR2RADEC returns the [RA,Dec] coordinates of the object
-%             equCoords = celestial.coo.coco([obj.longlat],'g','j2000.0','r','r');
-%             RAdec = [wrap22pi(equCoords(:,1)),wrap2pi(equCoords(:,2))]; 
-%         end
+        function [xy,z] = project(obj,longlat)
+            % PROJECT projects the spherical map to 2D plane
+            % [xy] = project(obj,longlat)
+            % Uses MAAT toolbox celestial.proj.projectcoo
+            % Input  : - Matrix of [Longitude,Latitude], in radians.
+            % Output : - Matrix of [x,y] positions
+            
+            assert(size(longlat,2)==2,'Expect 2 column matrix for longlat')
+            
+            if any(strcmp(obj.projectionType,{'top','bot'}))
+                [x,y,z] = PhTh2DirCos(longlat(1,:),longlat(:,2)+pi/2);
+                xy = [x(:),y(:)];
+            else
+                if contains('amhpslbtPGBCxr',obj.projectionType) || isempty(obj.projectPar1)
+                    Nin = 4;
+                elseif contains('cgMoS',obj.projectionType) || isempty(obj.projectPar2)
+                    Nin = 5;
+                else
+                    Nin = 6;
+                end
+                switch Nin
+                    case 4
+                        [xy(:,1),xy(:,2)] = celestial.proj.projectcoo(longlat(:,1),longlat(:,2),obj.projectionType,obj.projectionR);
+                    case 5
+                        [xy(:,1),xy(:,2)] = celestial.proj.projectcoo(longlat(:,1),longlat(:,2),obj.projectionType,obj.projectionR,par1);
+                    case 6
+                        [xy(:,1),xy(:,2)] = celestial.proj.projectcoo(longlat(:,1),longlat(:,2),obj.projectionType,obj.projectionR,obj.projectionPar1,obj.projectionPar2);
+                end
+                z = [];
+            end
+            
+        end
         
-%         function [azAlt,UTCtime,location] = coor2hor(obj,UTCtime,location)
-%             % COOR2HOR returns the horizontal (az,alt) coordinates of the
-%             % object
-%             % [azAlt,locTime,location] = coor2hor(obj,UTCtime,location)
-%             %
-%             % Inputs:
-%             % UTCtime in datetime format (default = 2018/01/01 , 00:00)
-%             % location as [long (rad) lat (rad) alt (m)] with default = [0.3292   -0.5922  300.0000] 
-%             
-%             if nargin < 2 || isempty(UTCtime), UTCtime = datetime(2018,1,1,0,0,0); end
-%             if nargin < 3 || isempty(location), location = [0.3292   -0.5922  300.0000]; end
-%             
-%             julDate = convert.date2jd([UTCtime.Day,UTCtime.Month,UTCtime.Year,UTCtime.Hour,UTCtime.Minute,UTCtime.Second]);
-%             horzCoords = wrap2pi(celestial.coo.horiz_coo([obj.coor2RAdec],julDate,location(1:2),'h'));
-%             azAlt = horzCoords(:,1:2);
-%         end
-        
-        function plotProj(obj,idx,logged,projectionType,R,par1,par2)
+        function plotProj(obj,idx,logged)
             % PLOTPROJ plots a projection of the map
-            % plotProj(obj,idx,longlat,projectionType,R,par1,par2)
+            % plotProj(obj,idx,longlat)
             % idx is the frequency index to plot
             % See GlobalSkyModelBase.project for details on the input
             % structure
             
             if nargin < 2 || isempty(idx), idx = 1; end
             if nargin < 3 || isempty(logged), logged = false; end
-            if nargin < 4 || isempty(projectionType), projectionType = 'm'; end
-            if nargin < 5 || isempty(R), R = 1; end
-            if nargin < 6, par1 = []; end
-            if nargin < 7, par2 = []; end
+            
             
             gmap = obj.generated_map_data(:,idx);
             if logged, gmap = log2(gmap); end
             
             if isempty(obj.xy), obj.xy = obj.longlat; end
             
-            [xyProj] = GlobalSkyModelBase.project(obj.xy,projectionType,R,par1,par2);
-            
-%             plot3(xy(:,1),xy(:,2),gmap,'.')
+            [xyProj,zProj] = obj.project(obj.xy);
+            if strcmp(obj.projectionType,'top')
+                xyProj = xyProj(zProj >= 0,:);
+                gmap = gmap(zProj >= 0);
+            end
+%             plot3(xyProj(:,1),xyProj(:,2),gmap,'.')
             gridDelaunay = delaunay(xyProj(:,1),xyProj(:,2));
             h = trisurf(gridDelaunay,xyProj(:,1),xyProj(:,2),gmap.*0,gmap);
             set(h, 'LineStyle', 'none')
@@ -214,28 +232,26 @@ classdef GlobalSkyModelBase
             hold on
         end
         
-        function plotHorizon(obj,projectionType,R,par1,par2,style)
+        function plotHorizon(obj,style)
             % PLOTHORIZON plots the horizon on the current axis
-            % plotHorizon(obj,projectionType,R,par1,par2,style)
-            % See plotProj for input details.
+            % plotHorizon(obj,style)
             % style is the linestyle of the plot ('w-')
             
-            % TODO: Fix this
+            if nargin < 2 || isempty(style), style = 'w-'; end
             
-            if nargin < 2 || isempty(projectionType), projectionType = 'm'; end
-            if nargin < 3 || isempty(R), R = 1; end
-            if nargin < 4, par1 = []; end
-            if nargin < 5, par2 = []; end
-            if nargin < 6 || isempty(style), style = 'w-'; end
-            
-            xyProj = GlobalSkyModelBase.project(obj.xyHorizon,projectionType,R,par1,par2);
+            xyProj = obj.project(obj.xyHorizon);
             plot(xyProj(:,1),xyProj(:,2),style)
         end
         
-        function plotSun(obj,projectionType,R,par1,par2,style)
+        function plotSun(obj,style)
             % PLOTSUN plots the approximate sun position
+            % plotSun(obj,style)
+            % style is the markerstyle of the plot ('w*')
             
+            if nargin < 2 || isempty(style), style = 'w*'; end
             
+            xyProj = obj.project(obj.xySun);
+            plot(xyProj(:,1),xyProj(:,2),style)
 
         end
         
@@ -280,59 +296,6 @@ classdef GlobalSkyModelBase
     end
     
     methods (Static = true)
-        function [xy] = project(longlat,projectionType,R,par1,par2)
-            % PROJECT projects the spherical map to 2D plane
-            % [xy] = project(obj,projectionType,R,par1,par2)
-            % Uses MAAT toolbox celestial.proj.projectcoo
-            % Input  : - Matrix of [Longitude,Latitude], in radians.
-            %          - Projection Type
-            %            'a' - Aitoff (default)
-            %            'm' - Mollweide equal-area
-            %            'h' - Hammer
-            %            'p' - Parabolic
-            %            's' - Sinusoidal
-            %            'l' - Lambert equal-area cylindrical
-            %            'b' - Behrmann equal-area cylindrical
-            %            't' - Tristan Edwards cylindrical
-            %            'P' - Peters cylindrical
-            %            'G' - Gall Orthographic cylindrical
-            %            'B' - Balthasart cylindrical
-            %            'c' - General cylindrical, opt par 1 is [Stand_Long, Stand_Lat] (radians)
-            %            'C' - Cassini
-            %            'x' - XY projection, no transformation.
-            %            'r' - polar projection (from north pole).
-            %            'A' - Albers equal-area, Par 1 is CenCoo and 2 is for ParLat (radians)
-            %            'g' - Gnomonic nonconformal projection. Par1 is [Long_cen, Lat_cen]
-            %            'M' - Mercator projection. Par1 is long_cen.
-            %            'o' - Bonne projection. Par1 is [central_long, standard_parallel]
-            %            'S' - Stereographic projection. Par1 is [central_long, standard_parallel]
-            %            #.# - Conic projection. where #.# is height of apex.
-            %          - Radius scale parameters, default is 1.
-            %          - Optional parameters 1.
-            %          - Optional parameters 2.
-            % Output : - Matrix of [x,y] positions
-            
-            assert(size(longlat,2)==2,'Expect 2 column matrix for longlat')
-            if nargin < 4, par1 = []; end
-            if nargin < 5, par2 = []; end
-            
-            if contains('amhpslbtPGBCxr',projectionType) || isempty(par1)
-                Nin = 4;
-            elseif contains('cgMoS',projectionType) || isempty(par2)
-                Nin = 5;
-            else
-                Nin = 6;
-            end
-            switch Nin
-                case 4
-                    [xy(:,1),xy(:,2)] = celestial.proj.projectcoo(longlat(:,1),longlat(:,2),projectionType,R);
-                case 5
-                    [xy(:,1),xy(:,2)] = celestial.proj.projectcoo(longlat(:,1),longlat(:,2),projectionType,R,par1);
-                case 6
-                    [xy(:,1),xy(:,2)] = celestial.proj.projectcoo(longlat(:,1),longlat(:,2),projectionType,R,par1,par2);
-            end
-            
-        end
-        
+%         
     end
 end
