@@ -76,20 +76,22 @@ logged = true;
 % % plot(az,alt,'.','markerSize',1)
 
 
-fPlot = 408;
 
-G0 = GlobalSkyModel2016;
-G0 = G0.generate(fPlot);
-G1 = G0.underSample(3);
-figure,G1.plotProj(1,true,'m')
-G1.plotHorizon('m')
-
+G = GlobalSkyModel2016;
+G
+G = G.generate(1000);
+G.Nside
+G1 = G.underSample(3);
+G1.Nside
+G1.plotProj
+G1.plotProj(1,true,'m')
+G1.plotProj(1,true,'a')
+G1.plotHorizon('a')
+G1.plotProj(1,true,'a')
 G2 = G1.setCoorSys('RAdec');
 figure,G2.plotProj(1,true,'m')
 G2.plotHorizon
-
-G1 = G1.setTime(datetime(2021,09,09,18,0,0));
 G3 = G1.setCoorSys('Horiz');
 figure,G3.plotProj(1,true,'m')
+G1.plotHorizon
 G3.plotHorizon
-G3.plotSun

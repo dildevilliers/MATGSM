@@ -29,6 +29,7 @@ classdef GlobalSkyModelBase
         Nside 
         Nf
         xyHorizon
+        xySun
         julDate
     end
     
@@ -70,16 +71,26 @@ classdef GlobalSkyModelBase
         function xyHorizon = get.xyHorizon(obj)
             az = linspace(-pi,pi,1001).';
             alt = zeros(size(az));
-            equCoords = wrap2pi(celestial.coo.horiz_coo([az,alt],obj.julDate,obj.location(1:2),'e'));
-            
-            switch obj.coorSys
-                case 'GalLongLat'
-                    galCoords = celestial.coo.coco(equCoords,'j2000.0','g','r','r');
-                    xyHorizon = galCoords;
-                case 'RAdec'
-                    xyHorizon = equCoords;
-                case 'Horiz'
-                    xyHorizon = [az,alt];
+            if strcmp(obj.coorSys,'Horiz')
+                xyHorizon = [az,alt];
+            else
+                xyHorizon = wrap2pi(celestial.coo.horiz_coo([az,alt],obj.julDate,obj.location(1:2),'e'));
+                if strcmp(obj.coorSys,'GalLongLat')
+                    xyHorizon = celestial.coo.coco(xyHorizon,'j2000.0','g','r','r');
+                end
+            end
+        end
+        
+        function xySun = get.xySun(obj)
+            az = linspace(-pi,pi,1001).';
+            alt = zeros(size(az));
+            if strcmp(obj.coorSys,'Horiz')
+                xySun = [az,alt];
+            else
+                xySun = wrap2pi(celestial.coo.horiz_coo([az,alt],obj.julDate,obj.location(1:2),'e'));
+                if strcmp(obj.coorSys,'GalLongLat')
+                    xySun = celestial.coo.coco(xySun,'j2000.0','g','r','r');
+                end
             end
         end
         
@@ -189,6 +200,8 @@ classdef GlobalSkyModelBase
             gmap = obj.generated_map_data(:,idx);
             if logged, gmap = log2(gmap); end
             
+            if isempty(obj.xy), obj.xy = obj.longlat; end
+            
             [xyProj] = GlobalSkyModelBase.project(obj.xy,projectionType,R,par1,par2);
             
 %             plot3(xy(:,1),xy(:,2),gmap,'.')
@@ -207,18 +220,23 @@ classdef GlobalSkyModelBase
             % See plotProj for input details.
             % style is the linestyle of the plot ('w-')
             
+            % TODO: Fix this
+            
             if nargin < 2 || isempty(projectionType), projectionType = 'm'; end
             if nargin < 3 || isempty(R), R = 1; end
             if nargin < 4, par1 = []; end
             if nargin < 5, par2 = []; end
             if nargin < 6 || isempty(style), style = 'w-'; end
             
-            az = linspace(-pi,pi,1001).';
-            alt = zeros(size(az));
-            
-            xyCoor = [az,alt];
-            xyProj = GlobalSkyModelBase.project(xyCoor,projectionType,R,par1,par2);
+            xyProj = GlobalSkyModelBase.project(obj.xyHorizon,projectionType,R,par1,par2);
             plot(xyProj(:,1),xyProj(:,2),style)
+        end
+        
+        function plotSun(obj,projectionType,R,par1,par2,style)
+            % PLOTSUN plots the approximate sun position
+            
+            
+
         end
         
         function view(obj, idx, logged)

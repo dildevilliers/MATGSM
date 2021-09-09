@@ -9,7 +9,7 @@ classdef GlobalSkyModelBase
     
     properties (SetAccess = private)
         coorSys = 'GalLongLat'        % Can be set to {'Horiz','RAdec','GalLongLat'} setCoorSys
-        location(1,3) double = [0.3292   -0.5922  300.0000]  % Earth location in [rad rad mASL]
+        location(1,3) double = [(-30.721745)*pi/180, (21.411701)*pi/180,  300.0000]  % Earth location in [rad rad mASL]
         UTCtime(1,1) datetime = datetime(2018,1,1,0,0,0)
     end
     
@@ -29,6 +29,7 @@ classdef GlobalSkyModelBase
         Nside 
         Nf
         xyHorizon
+        xySun
         julDate
     end
     
@@ -78,6 +79,18 @@ classdef GlobalSkyModelBase
                     xyHorizon = celestial.coo.coco(xyHorizon,'j2000.0','g','r','r');
                 end
             end
+        end
+        
+        function xySun = get.xySun(obj)
+            [RA,dec,~] = celestial.SolarSys.suncoo1(obj.julDate);
+            xySun = [RA,dec];
+            switch obj.coorSys
+                case 'Horiz'
+                    xySun = wrap2pi(celestial.coo.horiz_coo(xySun,obj.julDate,obj.location(1:2),'h'));
+                case 'GalLongLat'
+                    xySun = celestial.coo.coco(xySun,'j2000.0','g','r','r');
+            end
+            
         end
         
         function julDate = get.julDate(obj)
@@ -186,6 +199,8 @@ classdef GlobalSkyModelBase
             gmap = obj.generated_map_data(:,idx);
             if logged, gmap = log2(gmap); end
             
+            if isempty(obj.xy), obj.xy = obj.longlat; end
+            
             [xyProj] = GlobalSkyModelBase.project(obj.xy,projectionType,R,par1,par2);
             
 %             plot3(xy(:,1),xy(:,2),gmap,'.')
@@ -214,6 +229,22 @@ classdef GlobalSkyModelBase
             
             xyProj = GlobalSkyModelBase.project(obj.xyHorizon,projectionType,R,par1,par2);
             plot(xyProj(:,1),xyProj(:,2),style)
+        end
+        
+        function plotSun(obj,projectionType,R,par1,par2,style)
+            % PLOTSUN plots the approximate sun position
+            
+            % TODO: Fix this
+            
+            if nargin < 2 || isempty(projectionType), projectionType = 'm'; end
+            if nargin < 3 || isempty(R), R = 1; end
+            if nargin < 4, par1 = []; end
+            if nargin < 5, par2 = []; end
+            if nargin < 6 || isempty(style), style = 'w*'; end
+            
+            xyProj = GlobalSkyModelBase.project(obj.xySun,projectionType,R,par1,par2);
+            plot(xyProj(:,1),xyProj(:,2),style)
+
         end
         
         function view(obj, idx, logged)
