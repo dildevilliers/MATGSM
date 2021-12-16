@@ -15,7 +15,7 @@ classdef GlobalSkyModelBase
     end
     
     properties (SetAccess = private)
-        coorSys = 'GalLongLat'        % Can be set to {'Horiz','RAdec','GalLongLat'} setCoorSys
+        gridType = 'GalLongLat'        % Can be set to {'Horiz','RAdec','GalLongLat'} setCoorSys
         location(1,3) double = [(-30.721745), (21.411701),  300.0000]  % Earth location in [Lat(deg) Long(deg) mASL]
         UTCtime(1,1) datetime = datetime(2018,1,1,0,0,0)
     end
@@ -42,7 +42,7 @@ classdef GlobalSkyModelBase
     
     properties (Constant = true, Hidden = true)
         signPhi = -1;
-        astroGrids = {'Horiz','RAdec','GalLongLat'}
+        astroGrids = {'ENU','Horiz','RAdec','GalLongLat'}
     end
     
     methods
@@ -78,11 +78,11 @@ classdef GlobalSkyModelBase
         function xyHorizon = get.xyHorizon(obj)
             az = linspace(-pi,pi,1001).';
             alt = zeros(size(az));
-            if strcmp(obj.coorSys,'Horiz')
+            if strcmp(obj.gridType,'Horiz')
                 xyHorizon = [az,alt];
             else
                 xyHorizon = wrap2pi(celestial.coo.horiz_coo([az,alt],obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
-                if strcmp(obj.coorSys,'GalLongLat')
+                if strcmp(obj.gridType,'GalLongLat')
                     xyHorizon = celestial.coo.coco(xyHorizon,'j2000.0','g','r','r');
                 end
             end
@@ -92,7 +92,7 @@ classdef GlobalSkyModelBase
         function xySun = get.xySun(obj)
             sunStruct = celestial.SolarSys.get_sun(obj.julDate,deg2rad(fliplr(obj.location(1:2))));
             xySun = [sunStruct.RA,sunStruct.Dec];
-            switch obj.coorSys
+            switch obj.gridType
                 case 'Horiz'
                     xySun = [sunStruct.Az,sunStruct.Alt];
                 case 'GalLongLat'
@@ -111,7 +111,7 @@ classdef GlobalSkyModelBase
             % obj = setTime(obj,UTCtime)
             
             obj.UTCtime = UTCtime;
-            obj = obj.setCoorSys(obj.coorSys);  % This always goes from gal -> whereever, so update will happen automatically
+            obj = obj.changeGrid(obj.gridType);  % This always goes from gal -> whereever, so update will happen automatically
         end
         
         function obj = setLocation(obj,location)
@@ -119,28 +119,28 @@ classdef GlobalSkyModelBase
             % obj = = setLocation(obj,location)
             
             obj.location  = location;
-            obj = obj.setCoorSys(obj.coorSys);  % This always goes from gal -> whereever, so update will happen automatically
+            obj = obj.changeGrid(obj.gridType);  % This always goes from gal -> whereever, so update will happen automatically
         end
         
-        function obj = setCoorSys(obj,coorSys)
-            % SETCOORSYS sets the coordinate system
-            % obj = setCoorSys(obj,coorSys)
-            % Input: coorSys can be anything in obj.astroGrids
+        function obj = changeGrid(obj,gridType)
+            % CHANGEGRID sets the coordinate system grid
+            % obj = changeGrid(obj,gridType)
+            % Input: changeGrid can be anything in obj.astroGrids
             
-            assert(ismember(coorSys,obj.astroGrids),'Unkown coorSys. See obj.astroGrids for allowable names')
+            assert(ismember(gridType,obj.astroGrids),'Unkown coorSys. See obj.astroGrids for allowable names')
             
-            if strcmp(coorSys,'GalLongLat')
+            if strcmp(gridType,'GalLongLat')
                 obj.xy = obj.longlat;
             else %if strcmp(coorSys,'RAdec') || strcmp(coorSys,'Horiz') 
                 % Always calculate this - needed for both transforms
                 equCoords = celestial.coo.coco([obj.longlat],'g','j2000.0','r','r');
                 obj.xy = [wrap2pi(equCoords(:,1)),wrap2pi(equCoords(:,2))];
-                if strcmp(coorSys,'Horiz')  % Update if needed
+                if strcmp(gridType,'Horiz')  % Update if needed
                     horzCoords = wrap2pi(celestial.coo.horiz_coo([obj.xy],obj.julDate,deg2rad(fliplr(obj.location(1:2))),'h'));
                     obj.xy = horzCoords(:,1:2);
                 end
             end
-            obj.coorSys = coorSys;
+            obj.gridType = gridType;
         end
         
         function obj = underSample(obj,sampleFactor)
@@ -221,6 +221,9 @@ classdef GlobalSkyModelBase
             if strcmp(obj.projectionType,'top')
                 xyProj = xyProj(zProj >= 0,:);
                 gmap = gmap(zProj >= 0);
+            elseif strcmp(obj.projectionType,'bot')
+                xyProj = xyProj(zProj <= 0,:);
+                gmap = gmap(zProj <= 0);
             end
 %             plot3(xyProj(:,1),xyProj(:,2),gmap,'.')
             gridDelaunay = delaunay(xyProj(:,1),xyProj(:,2));
@@ -250,7 +253,12 @@ classdef GlobalSkyModelBase
             
             if nargin < 2 || isempty(style), style = 'w*'; end
             
-            xyProj = obj.project(obj.xySun);
+            [xyProj,zProj] = obj.project(obj.xySun);
+            if strcmp(obj.projectionType,'top')
+                xyProj = xyProj(zProj >= 0,:);
+            elseif strcmp(obj.projectionType,'bot')
+                xyProj = xyProj(zProj <= 0,:);
+            end
             plot(xyProj(:,1),xyProj(:,2),style)
 
         end

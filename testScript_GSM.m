@@ -85,13 +85,13 @@ figure,G1.plotProj(1,true)
 G1.plotHorizon
 G1.plotSun
 
-G2 = G1.setCoorSys('RAdec');
+G2 = G1.changeGrid('RAdec');
 figure,G2.plotProj(1,true)
 G2.plotHorizon
 G2.plotSun
 
-G1 = G1.setTime(datetime(2021,09,09,18,0,0));
-G3 = G1.setCoorSys('Horiz');
+G1 = G1.setTime(datetime(2021,09,09,19,0,0));
+G3 = G1.changeGrid('Horiz');
 figure,G3.plotProj(1,true)
 G3.plotHorizon
 G3.plotSun
@@ -99,3 +99,4 @@ G3.plotSun
 G4 = G3;
 G4.projectionType = 'top';
 figure,G4.plotProj(1,true)
+G4.plotSun
