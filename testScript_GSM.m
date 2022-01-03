@@ -85,10 +85,13 @@ figure,G1.plotProj(1,true,'m')
 G1.plotHorizon('m')
 
 G2 = G1.setCoorSys('RAdec');
+G2 = G2.setLocation([0,0,0]);
+G2 = G2.setTime(datetime(2021,09,21,0,0,0));
 figure,G2.plotProj(1,true,'m')
 G2.plotHorizon
 
-G1 = G1.setTime(datetime(2021,09,09,18,0,0));
+G1 = G1.setTime(datetime(2021,09,21,0,0,0));
+G1 = G1.setLocation([0,0,0]);
 G3 = G1.setCoorSys('Horiz');
 figure,G3.plotProj(1,true,'m')
 G3.plotHorizon
