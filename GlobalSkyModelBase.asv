@@ -42,7 +42,7 @@ classdef GlobalSkyModelBase
     
     properties (Constant = true, Hidden = true)
         signPhi = -1;
-        astroGrids = {'ENU','Horiz','RAdec','GalLongLat'}
+        astroGrids = {'Horiz','RAdec','GalLongLat'}
     end
     
     methods
@@ -111,7 +111,7 @@ classdef GlobalSkyModelBase
             % obj = setTime(obj,UTCtime)
             
             obj.UTCtime = UTCtime;
-            obj = obj.changeGrid(obj.gridType);  % This always goes from gal -> whereever, so update will happen automatically
+            obj = obj.changeGrid(obj.coorSys);  % This always goes from gal -> whereever, so update will happen automatically
         end
         
         function obj = setLocation(obj,location)
@@ -119,7 +119,7 @@ classdef GlobalSkyModelBase
             % obj = = setLocation(obj,location)
             
             obj.location  = location;
-            obj = obj.changeGrid(obj.gridType);  % This always goes from gal -> whereever, so update will happen automatically
+            obj = obj.setCoorSys(obj.coorSys);  % This always goes from gal -> whereever, so update will happen automatically
         end
         
         function obj = changeGrid(obj,gridType)

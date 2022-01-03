@@ -81,14 +81,16 @@ fPlot = 408;
 G0 = GlobalSkyModel2016;
 G0 = G0.generate(fPlot);
 G1 = G0.underSample(3);
-figure,G1.plotProj(1,true,'m')
-G1.plotHorizon('m')
+figure,G1.plotProj(1,true)
+G1.plotHorizon
+G1.plotSun
 
 G2 = G1.setCoorSys('RAdec');
 G2 = G2.setLocation([0,0,0]);
 G2 = G2.setTime(datetime(2021,09,21,0,0,0));
 figure,G2.plotProj(1,true,'m')
 G2.plotHorizon
+G2.plotSun
 
 G1 = G1.setTime(datetime(2021,09,21,0,0,0));
 G1 = G1.setLocation([0,0,0]);
@@ -96,3 +98,8 @@ G3 = G1.setCoorSys('Horiz');
 figure,G3.plotProj(1,true,'m')
 G3.plotHorizon
 G3.plotSun
+
+G4 = G3;
+G4.projectionType = 'top';
+figure,G4.plotProj(1,true)
+G4.plotSun
