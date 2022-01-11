@@ -7,8 +7,8 @@ classdef GlobalSkyModelBase
         projectionPar1 = []     % See MAAT toolbox celestial.proj.projectcoo for details
         projectionPar2 = []     % See MAAT toolbox celestial.proj.projectcoo for details
         
+        hideGround(1,1) logical = false     % Set to true to hide the ground region in all plots
         gridPlotStepDeg(1,1) double = 10;   % Density of grid lines for plots
-        FoV = 235;              % Field of view for projections with singularities (deg) 
     end
     
     properties (SetAccess = protected)
@@ -30,25 +30,25 @@ classdef GlobalSkyModelBase
     properties (SetAccess = private, Hidden = true)
         xy(:,2) double  % The current local grid
     end
+    
     properties (Dependent = true, Hidden = true)
        freqScale 
        longlat  % Longitude and latitude of the original galactic grid (N x 2)
+       xyHorizon
+       xySunMoon
        xyGridAz 
-       xyNESW
        xyVerifyMarkers
+       idxGround
     end
     
     properties (Dependent = true)
         Nside 
         Nf
-        xyHorizon
-        xySun
-        xyMoon
+        signPhi
         julDate
     end
     
     properties (Constant = true, Hidden = true)
-        signPhi = 1;
         astroGrids = {'Horiz','RAdec','GalLongLat'}
         verifyMarkers = {'GC','VelaSNR','Cygnus','Cas-A','Cen-A','Tau-A','Orion-A','LMC','SMC'}
         verifyMarkerGalCoors = [0,0; -96,-3.3; 77,2; 111.75,-2.11; -50.5,19.42; -175.42,-5.79; -151,-19.36; -79.5,-32.85; -57.2,-44.3];
@@ -76,26 +76,47 @@ classdef GlobalSkyModelBase
             Nf = size(obj.generated_map_data,2);
         end
         
+        function signPhi = get.signPhi(obj)
+            switch obj.gridType
+                case 'GalLongLat'
+                    signPhi = -1;
+                case 'RAdec'
+                    signPhi = -1;
+                case 'Horiz'
+                    signPhi = 1;
+            end
+        end
+        
         function longlat = get.longlat(obj)
             tp = pix2ang(obj.Nside);
             tp = [tp{:}];
             th = tp(1,:);
-            ph = obj.signPhi.*tp(2,:);
+            ph = tp(2,:);
             longlat = [wrap2pi(ph(:)),pi/2 - th(:)];
         end
         
+        function idxGround = get.idxGround(obj)
+            obj = obj.changeGrid('Horiz');
+            idxGround = find(obj.xy(:,2) < 0);
+        end
+        
         function xyHorizon = get.xyHorizon(obj)
-            az = linspace(-pi,pi,1001).';
+            % Work in horizontal coordinates
+            % First four elements are the cardinal points for
+            % plotDirections
+            az = [deg2rad(0:90:270).';linspace(-pi,pi,1001).'];
             alt = zeros(size(az));
             
             xyHorizon = [az,alt];
             if ~strcmp(obj.gridType,'Horiz')
-                xyHorizon = wrap2pi(celestial.coo.horiz_coo(xyHorizon,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
+                % Go to equatorial
+                xyHorizon = wrap2pi(horiz_coo(xyHorizon,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
                 if strcmp(obj.gridType,'GalLongLat')
+                    % Go to galactic
                     xyHorizon = celestial.coo.coco(xyHorizon,'j2000.0','g','r','r');
                 end
             end
-            xyHorizon = wrap2pi(xyHorizon);
+            xyHorizon = wrap2pi([obj.signPhi,1].*xyHorizon);
         end
         
         function xyGridAz = get.xyGridAz(obj)
@@ -123,7 +144,7 @@ classdef GlobalSkyModelBase
            
             gridLines = reshape(gridLines,Nplot*xyGridAz.Nlines,2);
             if ~strcmp(obj.gridType,'Horiz')
-                gridLines = wrap2pi(celestial.coo.horiz_coo(gridLines,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
+                gridLines = wrap2pi(horiz_coo(gridLines,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
                 if strcmp(obj.gridType,'GalLongLat')
                     gridLines = celestial.coo.coco(gridLines,'j2000.0','g','r','r');
                 end
@@ -132,53 +153,30 @@ classdef GlobalSkyModelBase
             xyGridAz.gridLines = wrap2pi(gridLines);
         end
         
-        function xyNESW = get.xyNESW(obj)
-            az = deg2rad(0:90:270).';
-            alt = zeros(size(az));
-            xyNESW = [az,alt];
-            if ~strcmp(obj.gridType,'Horiz')
-                xyNESW = wrap2pi(celestial.coo.horiz_coo(xyNESW,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
-                if strcmp(obj.gridType,'GalLongLat')
-                    xyNESW = celestial.coo.coco(xyNESW,'j2000.0','g','r','r');
-                end
-            end
-            xyNESW = wrap2pi(xyNESW);
-        end
-        
-        function xySun = get.xySun(obj)
+        function xySunMoon = get.xySunMoon(obj)
             sunStruct = celestial.SolarSys.get_sun(obj.julDate,deg2rad(fliplr(obj.location(1:2))));
-            xySun = [sunStruct.RA,sunStruct.Dec];
-            switch obj.gridType
-                case 'Horiz'
-                    xySun = [sunStruct.Az,sunStruct.Alt];
-                case 'GalLongLat'
-                    xySun = celestial.coo.coco(xySun,'j2000.0','g','r','r');
-            end
-            xySun = wrap2pi(xySun);
-        end
-        
-        function xyMoon = get.xyMoon(obj)
             moonStruct = celestial.SolarSys.get_moon(obj.julDate,deg2rad(fliplr(obj.location(1:2))));
-            xyMoon = [moonStruct.RA,moonStruct.Dec];
+            xySunMoon = [sunStruct.RA,sunStruct.Dec;moonStruct.RA,moonStruct.Dec];
             switch obj.gridType
                 case 'Horiz'
-                    xyMoon = [moonStruct.Az,moonStruct.Alt];
+                    xySunMoon = [sunStruct.Az,sunStruct.Alt;moonStruct.Az,moonStruct.Alt];
                 case 'GalLongLat'
-                    xyMoon = celestial.coo.coco(xyMoon,'j2000.0','g','r','r');
+                    xySunMoon = celestial.coo.coco(xySunMoon,'j2000.0','g','r','r');
             end
-            xyMoon = wrap2pi(xyMoon);
+            xySunMoon = wrap2pi([obj.signPhi,1].*xySunMoon);
         end
         
         function xyVerifyMarkers = get.xyVerifyMarkers(obj)
             
-            xyVerifyMarkers = wrap2pi(deg2rad([obj.signPhi,1].*obj.verifyMarkerGalCoors));
-            
-            if ~strcmp(obj.gridType,'GalLongLat')
-                xyVerifyMarkers = celestial.coo.coco(xyVerifyMarkers,'g','j2000.0','r','r');
-                xyVerifyMarkers = [wrap2pi(xyVerifyMarkers(:,1)),wrap2pi(xyVerifyMarkers(:,2))];
+            xyVerifyMarkersGC = deg2rad(obj.verifyMarkerGalCoors);
+            if strcmp(obj.gridType,'GalLongLat')
+                xyVerifyMarkers = wrap2pi([obj.signPhi,1].*xyVerifyMarkersGC);
+            else 
+                xyVerifyMarkersEq = celestial.coo.coco(xyVerifyMarkersGC,'g','j2000.0','r','r');
+                xyVerifyMarkers = wrap2pi([obj.signPhi,1].*xyVerifyMarkersEq);
                 if any(strcmp(obj.gridType,{'Horiz'}))  % Update if needed
-                    xyVerifyMarkers = wrap2pi(celestial.coo.horiz_coo(xyVerifyMarkers,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'h'));
-                    xyVerifyMarkers = xyVerifyMarkers(:,1:2);
+                    xyVerifyMarkersHor = wrap2pi(celestial.coo.horiz_coo(xyVerifyMarkersEq,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'h'));
+                    xyVerifyMarkers =  wrap2pi([obj.signPhi,1].*xyVerifyMarkersHor);
                 end
             end
         end
@@ -197,7 +195,8 @@ classdef GlobalSkyModelBase
         
         function obj = setLocation(obj,location)
             % SETLOCATION sets the location of the observer
-            % obj = = setLocation(obj,location)
+            % obj = setLocation(obj,location)
+            % location is a 3 element vector: [Lat(deg) Long(deg) mASL]
             
             obj.location  = location;
             obj = obj.changeGrid(obj.gridType);  % This always goes from gal -> whereever, so update will happen automatically
@@ -210,18 +209,18 @@ classdef GlobalSkyModelBase
             
             assert(ismember(gridType,obj.astroGrids),'Unkown coorSys. See obj.astroGrids for allowable names')
             
+            obj.gridType = gridType;
             if strcmp(gridType,'GalLongLat')
-                obj.xy = obj.longlat;
+                obj.xy = [obj.signPhi,1].*obj.longlat;
             else %if any(strcmp(coorSys,{'RAdec','Horiz'}))
                 % Always calculate this - needed for all three transforms
-                equCoords = celestial.coo.coco([obj.longlat],'g','j2000.0','r','r');
-                obj.xy = [wrap2pi(equCoords(:,1)),wrap2pi(equCoords(:,2))];
+                xyEq = celestial.coo.coco(obj.longlat,'g','j2000.0','r','r');
+                obj.xy = wrap2pi([obj.signPhi,1].*xyEq);
                 if any(strcmp(gridType,{'Horiz'}))  % Update if needed
-                    horzCoords = wrap2pi(celestial.coo.horiz_coo([obj.xy],obj.julDate,deg2rad(fliplr(obj.location(1:2))),'h'));
-                    obj.xy = horzCoords(:,1:2);
+                    xyHor = wrap2pi(horiz_coo(xyEq,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'h'));
+                    obj.xy = wrap2pi([obj.signPhi,1].*xyHor);
                 end
             end
-            obj.gridType = gridType;
         end
         
         function obj = underSample(obj,sampleFactor)
@@ -273,7 +272,7 @@ classdef GlobalSkyModelBase
                 case 6
                     [xy(:,1),xy(:,2)] = celestial.proj.projectcoo(longlat(:,1),longlat(:,2),obj.projectionType,obj.projectionR,obj.projectionPar1,obj.projectionPar2);
             end
-            z = [];
+            z = [];  % for in case later...
         end
         
         function plotProj(obj,idx,logged)
@@ -289,16 +288,13 @@ classdef GlobalSkyModelBase
             gmap = obj.generated_map_data(:,idx);
             if logged, gmap = log2(gmap); end
             
-            if isempty(obj.xy), obj.xy = obj.longlat; end
+            if obj.hideGround, gmap(obj.idxGround) = nan; end
             
-            [xyProj,zProj] = obj.project(obj.xy);
-            if strcmp(obj.projectionType,'top')
-                xyProj = xyProj(zProj >= 0,:);
-                gmap = gmap(zProj >= 0);
-            elseif strcmp(obj.projectionType,'bot')
-                xyProj = xyProj(zProj <= 0,:);
-                gmap = gmap(zProj <= 0);
+            if isempty(obj.xy)  % we are in Galactic coordinates now
+                obj.xy = [obj.signPhi,1].*obj.longlat; 
             end
+            
+            [xyProj] = obj.project(obj.xy);
             gridDelaunay = delaunay(xyProj(:,1),xyProj(:,2));
             h = trisurf(gridDelaunay,xyProj(:,1),xyProj(:,2),gmap.*0,gmap);
             set(h, 'LineStyle', 'none')
@@ -335,6 +331,7 @@ classdef GlobalSkyModelBase
             obj.projectionType = 'S';
             obj.projectionPar1 = deg2rad([0,90]);
             obj = obj.changeGrid('Horiz');
+            obj.hideGround = true;
             valInd = find(obj.xy(:,2) >= 0);
             [xyProj,~] = obj.project(obj.xy(valInd,:));
             
@@ -347,12 +344,9 @@ classdef GlobalSkyModelBase
             hold on
             colorbar('location','SouthOutside')
             if details(1), obj.plotDirections('k'); end
-            if details(2) && obj.xySun(2) >= 0, obj.plotSun; end
-            if details(3) && obj.xyMoon(2) >= 0, obj.plotMoon; end
-            if details(4)
-                idxVerify = find(obj.xyVerifyMarkers(:,2) >= 0);
-                obj.plotVerifyMarkers([],idxVerify);
-            end
+            if details(2) && obj.xySunMoon(1,2) >= 0, obj.plotSun; end
+            if details(3) && obj.xySunMoon(2,2) >= 0, obj.plotMoon; end
+            if details(4), obj.plotVerifyMarkers; end
         end
         
         function plotHorizon(obj,style)
@@ -360,16 +354,17 @@ classdef GlobalSkyModelBase
             % plotHorizon(obj,style)
             % style is the linestyle of the plot ('w-')
             
-            if nargin < 2 || isempty(style), style = 'w-'; end
+            if nargin < 2 || isempty(style), style = 'w.'; end
             
             xyProj = obj.project(obj.xyHorizon);
-            plot(xyProj(:,1),xyProj(:,2),style)
+            plot(xyProj(5:end,1),xyProj(5:end,2),style)
         end
         
         function plotGridAz(obj,style)
             % PLOTGRIDAZ plots the azimuthal grid on the current axis
             % plotGridAz(obj,style)
             % style is the linestyle of the plot ('w-')
+            % Not very reliable yet
             
             if nargin < 2 || isempty(style), style = 'w-'; end
             
@@ -387,7 +382,7 @@ classdef GlobalSkyModelBase
             if nargin < 2 || isempty(color), color = 'w'; end
             
             textStr = 'NESW';
-            xyProj = obj.project(obj.xyNESW);
+            xyProj = obj.project(obj.xyHorizon);
             for tt = 1:4
                 text(xyProj(tt,1),xyProj(tt,2),textStr(tt),'Color',color);
             end
@@ -400,8 +395,11 @@ classdef GlobalSkyModelBase
             
             if nargin < 2 || isempty(style), style = 'w*'; end
             
-            [xyProj,~] = obj.project(obj.xySun);
-            plot(xyProj(:,1),xyProj(:,2),style)
+            sunStruct = celestial.SolarSys.get_sun(obj.julDate,deg2rad(fliplr(obj.location(1:2))));
+            if ~(obj.hideGround && sunStruct.Alt < 0)  
+                [xyProj,~] = obj.project(obj.xySunMoon);
+                plot(xyProj(1,1),xyProj(1,2),style)
+            end
         end
 
         function plotMoon(obj,style)
@@ -411,31 +409,31 @@ classdef GlobalSkyModelBase
             
             if nargin < 2 || isempty(style), style = 'wo'; end
             
-            [xyProj,~] = obj.project(obj.xyMoon);
-            plot(xyProj(:,1),xyProj(:,2),style)
+            moonStruct = celestial.SolarSys.get_moon(obj.julDate,deg2rad(fliplr(obj.location(1:2))));
+            if ~(obj.hideGround && moonStruct.Alt < 0)
+                [xyProj,~] = obj.project(obj.xySunMoon);
+                plot(xyProj(2,1),xyProj(2,2),style)
+            end
         end
         
-        
-        function plotVerifyMarkers(obj,color,idxPlot)
+        function plotVerifyMarkers(obj,color)
             % PLOTVERIFYMARKERS plots the verification markers
             % plotVerifyMarkers(obj,color,idxPlot)
             % color is the text color ('w')
-            % idxPlot is a vector of which indexes to plot (ones)
             
             if nargin < 2 || isempty(color), color = 'w'; end
-            if nargin < 3 || isempty(idxPlot), idxPlot = ones(size(obj.verifyMarkers)); end
-            
-            if numel(idxPlot) < length(obj.verifyMarkers)
-                idxPlot_ = ones(size(obj.verifyMarkers));
-                idxPlot_(1:numel(idxPlot)) = idxPlot;
-                idxPlot = idxPlot_;
-            end
             
             xyProj = obj.project(obj.xyVerifyMarkers);
-            for tt = 1:length(obj.verifyMarkers)
-                if idxPlot(tt)
-                    text(xyProj(tt,1),xyProj(tt,2),obj.verifyMarkers(tt),'Color',color);
-                end
+            
+            if obj.hideGround
+                obj.gridType = 'Horiz';
+                idxPlot = find(obj.xyVerifyMarkers(:,2) >= 0);
+            else
+                idxPlot = 1:numel(obj.verifyMarkers);
+            end
+            
+            for tt = 1:length(idxPlot)
+                text(xyProj(idxPlot(tt),1),xyProj(idxPlot(tt),2),obj.verifyMarkers(idxPlot(tt)),'Color',color);
             end
         end
             
