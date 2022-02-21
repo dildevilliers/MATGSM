@@ -210,15 +210,17 @@ classdef GlobalSkyModelBase
             assert(ismember(gridType,obj.astroGrids),'Unkown coorSys. See obj.astroGrids for allowable names')
             
             obj.gridType = gridType;
-            if strcmp(gridType,'GalLongLat')
-                obj.xy = [obj.signPhi,1].*obj.longlat;
-            else %if any(strcmp(coorSys,{'RAdec','Horiz'}))
-                % Always calculate this - needed for all three transforms
-                xyEq = celestial.coo.coco(obj.longlat,'g','j2000.0','r','r');
-                obj.xy = wrap2pi([obj.signPhi,1].*xyEq);
-                if any(strcmp(gridType,{'Horiz'}))  % Update if needed
-                    xyHor = wrap2pi(horiz_coo(xyEq,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'h'));
-                    obj.xy = wrap2pi([obj.signPhi,1].*xyHor);
+            if ~isempty(obj.xy)
+                if strcmp(gridType,'GalLongLat')
+                    obj.xy = [obj.signPhi,1].*obj.longlat;
+                else %if any(strcmp(coorSys,{'RAdec','Horiz'}))
+                    % Always calculate this - needed for all three transforms
+                    xyEq = celestial.coo.coco(obj.longlat,'g','j2000.0','r','r');
+                    obj.xy = wrap2pi([obj.signPhi,1].*xyEq);
+                    if any(strcmp(gridType,{'Horiz'}))  % Update if needed
+                        xyHor = wrap2pi(horiz_coo(xyEq,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'h'));
+                        obj.xy = wrap2pi([obj.signPhi,1].*xyHor);
+                    end
                 end
             end
         end
