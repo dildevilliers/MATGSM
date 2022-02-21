@@ -69,7 +69,7 @@ classdef GlobalSkyModelBase
         end
         
         function Nside = get.Nside(obj)
-            Nside = sqrt(size(obj.generated_map_data,1)./12);
+            Nside = nPix2nSide(size(obj.generated_map_data,1));
         end
         
         function Nf = get.Nf(obj)

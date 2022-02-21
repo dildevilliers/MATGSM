@@ -9,7 +9,7 @@ G0 = G0.generate(fPlot);
 
 %%
 close all
-G0.hideGround = true;
+G0.hideGround = false;
 
 G1 = G0.underSample(3);
 G1 = G1.setTime(datetime(2021,09,20,12,0,0));
