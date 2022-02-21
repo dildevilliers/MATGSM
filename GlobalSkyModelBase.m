@@ -130,7 +130,7 @@ classdef GlobalSkyModelBase
             % Pack the lines as increasing parallels, and then increasing
             % meridians
             Nplot = 201;
-            gridlines = zeros(Nplot,2,xyGridAz.Nlines);
+            gridLines = zeros(Nplot,2,xyGridAz.Nlines);
             for nnLat = 1:xyGridAz.Nlat
                 az = linspace(-pi,pi,Nplot).';
                 alt = ones(size(az)).*xyGridAz.latVect(nnLat);
@@ -150,7 +150,7 @@ classdef GlobalSkyModelBase
                 end
             end
             gridLines = reshape(gridLines,Nplot,2,xyGridAz.Nlines);
-            xyGridAz.gridLines = wrap2pi(gridLines);
+            xyGridAz.gridLines = wrap2pi([obj.signPhi,1].*gridLines);
         end
         
         function xySunMoon = get.xySunMoon(obj)
