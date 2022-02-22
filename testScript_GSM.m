@@ -17,7 +17,7 @@ G1 = G1.setLocation([0,0,0]);
 G1.projectionType = 'm';
 
 figure,G1.plotProj(1,true)
-G1.plotHorizon('k')
+G1.plotHorizon('k.')
 G1.plotDirections('k')
 G1.plotSun('k*')
 G1.plotMoon('ko')
