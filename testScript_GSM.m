@@ -25,7 +25,7 @@ G1.plotVerifyMarkers('k')
 
 G2 = G1.changeGrid('RAdec');
 figure,G2.plotProj(1,true)
-G2.plotHorizon('k')
+G2.plotHorizon('k.')
 G2.plotDirections('k')
 G2.plotSun('k*')
 G2.plotMoon('ko')
@@ -33,7 +33,7 @@ G2.plotVerifyMarkers('k')
 
 G3 = G1.changeGrid('Horiz');
 figure,G3.plotProj(1,true)
-G3.plotHorizon('k')
+G3.plotHorizon('k.')
 G3.plotDirections('k')
 G3.plotSun('k*')
 G3.plotMoon('ko')
