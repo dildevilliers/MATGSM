@@ -140,7 +140,7 @@ classdef GlobalSkyModel2016 < GlobalSkyModelBase
                 
                 nMap = size(map_out,2);
                 nside = sqrt(nMap./12);
-                iRing = ring2nest(nside,1:nMap);
+                if ff == 1, iRing = ring2nest(nside,1:nMap); end
                 map_out(ff,:) = map_out(ff,iRing);
                 
                 switch obj.unit
