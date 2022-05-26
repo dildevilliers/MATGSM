@@ -21,10 +21,10 @@ if ischar(location)==1
     for i=1:length(L_coord(:,1))
         if strcmp(Location_label{i}, location)
             lat=L_coord(i,1);long=L_coord(i,2);alt=L_coord(i,3);
-            lat_long_alt = [lat, long, alt]
+            lat_long_alt = [lat, long, alt];
         end
     end
 else
-    lat_long_alt = [location(1), location(2), location(3)]
+    lat_long_alt = [location(1), location(2), location(3)];
 end
 end
