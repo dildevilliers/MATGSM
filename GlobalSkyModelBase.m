@@ -201,7 +201,7 @@ classdef GlobalSkyModelBase
             % location is a 3 element vector: [Lat(deg) Long(deg) mASL]
             
             %obj.location  = location;
-            obj.location = setLocation(location)
+            obj.location = setLocation(location);
             if ~isempty(obj.xy)
                 obj = obj.changeGrid(obj.gridType);  % This always goes from gal -> whereever, so update will happen automatically
             end

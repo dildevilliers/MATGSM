@@ -13,7 +13,8 @@ G0.hideGround = false;
 
 G1 = G0.underSample(3);
 G1 = G1.setTime(datetime(2021,09,20,12,0,0));
-G1 = G1.setLocation([0,0,0]);
+% G1 = G1.setLocation([0,0,0]);
+G1 = G1.setLocation('REACH');
 G1.projectionType = 'm';
 
 figure,G1.plotProj(1,true)
