@@ -91,7 +91,7 @@ classdef Haslam < GlobalSkyModelBase
             assert(min(size(freqs))  == 1, 'freqs must be vector')
             freqs_mhz = freqs.*obj.freqScale;
             
-            map_out = (obj.data - obj.Tcmb).*(freqs_mhz./408.0).^(obj.spectral_index) + obj.Tcmb;
+            map_out = obj.data.*(freqs_mhz./408.0).^(obj.spectral_index);
             
             obj.generated_map_data = map_out;
             obj.generated_map_freqs = freqs;
@@ -104,10 +104,7 @@ classdef Haslam < GlobalSkyModelBase
             % If Tcmb > 0, it is removed from the scaling and added back.
             % Default is 2.73 K
             
-            obj.Tcmb = Tcmb;
-            if ~isempty(obj.generated_map_data)
-                obj = obj.generate(obj.generated_map_freqs);
-            end
+            
         end
     end
     
