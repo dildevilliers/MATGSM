@@ -251,8 +251,8 @@ classdef GlobalSkyModelBase
                end
                iRing = ring2nest(obj.Nside./2,(1:nSide2nPix(obj.Nside./2)).');
                obj.generated_map_data = dNest(iRing,:);
+               
            end
-           obj = obj.changeGrid(obj.gridType);  % Set xy
         end
         
         function [xy,z] = project(obj,longlat)
