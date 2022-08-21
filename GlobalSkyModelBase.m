@@ -255,6 +255,16 @@ classdef GlobalSkyModelBase
            obj = obj.changeGrid(obj.gridType);  % Set xy
         end
         
+        function obj = updateMapData(obj,mapData)
+            % UPDATEMAPDATA updates the results in generated_map_data
+            % Usually from external calculations after internally setting
+            % up the result
+            
+            assert(all(size(mapData) == size(obj.generated_map_data)),'Input mapData must be the same size as internal generated_map_data')
+            
+            obj.generated_map_data = mapData;
+        end
+        
         function [xy,z] = project(obj,longlat)
             % PROJECT projects the spherical map to 2D plane
             % [xy] = project(obj,longlat)
