@@ -251,18 +251,8 @@ classdef GlobalSkyModelBase
                end
                iRing = ring2nest(obj.Nside./2,(1:nSide2nPix(obj.Nside./2)).');
                obj.generated_map_data = dNest(iRing,:);
+               
            end
-           obj = obj.changeGrid(obj.gridType);  % Set xy
-        end
-        
-        function obj = updateMapData(obj,mapData)
-            % UPDATEMAPDATA updates the results in generated_map_data
-            % Usually from external calculations after internally setting
-            % up the result
-            
-            assert(all(size(mapData) == size(obj.generated_map_data)),'Input mapData must be the same size as internal generated_map_data')
-            
-            obj.generated_map_data = mapData;
         end
         
         function [xy,z] = project(obj,longlat)
