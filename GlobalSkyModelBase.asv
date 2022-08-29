@@ -230,7 +230,11 @@ classdef GlobalSkyModelBase
         end
         
         function obj = underSample(obj,sampleFactor)
+<<<<<<< Updated upstream
            % UNDERSAMPLE returns the objects on a coarser grid
+=======
+           % UNDERSAMPLE returns the objects on a coarses grid
+>>>>>>> Stashed changes
            % obj = underSample(obj,sampleFactor)
            % SampleFactor is a positive integer indicating 2^sampleFactor reduction
            % in nSide with default (1)
@@ -251,7 +255,10 @@ classdef GlobalSkyModelBase
                end
                iRing = ring2nest(obj.Nside./2,(1:nSide2nPix(obj.Nside./2)).');
                obj.generated_map_data = dNest(iRing,:);
+<<<<<<< Updated upstream
                
+=======
+>>>>>>> Stashed changes
            end
         end
         
