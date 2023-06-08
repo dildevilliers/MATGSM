@@ -89,6 +89,7 @@ classdef Haslam < GlobalSkyModelBase
             %     is in galactic coordinates, and in antenna temperature units (K).
             
             assert(min(size(freqs))  == 1, 'freqs must be vector')
+            freqs = freqs(:).';      % Force row
             freqs_mhz = freqs.*obj.freqScale;
             
             map_out = (obj.data - obj.Tcmb).*(freqs_mhz./408.0).^(obj.spectral_index) + obj.Tcmb;
