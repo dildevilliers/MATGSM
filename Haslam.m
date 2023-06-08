@@ -97,9 +97,9 @@ classdef Haslam < GlobalSkyModelBase
             obj.generated_map_freqs = freqs;
         end
         
-        function obj = setTcmb(Tcmb)
+        function obj = setTcmb(obj,Tcmb)
             % SETTCMB sets the CMB temperature in the object
-            % obj = setTcmb(Tcmb)
+            % obj = setTcmb(obj,Tcmb)
             % If Tcmb = 0 the full temperature is scled by the power law.
             % If Tcmb > 0, it is removed from the scaling and added back.
             % Default is 2.73 K
