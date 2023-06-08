@@ -17,7 +17,10 @@ classdef GlobalSkyModel2016 < GlobalSkyModelBase
         h = 6.62607e-34
         T = 2.725
     end
-    
+
+    properties (Dependent = true)
+        Npix
+    end
     
     methods
         function obj = GlobalSkyModel2016(freq_unit,unit,resolution,theta_rot,phi_rot)
@@ -86,6 +89,14 @@ classdef GlobalSkyModel2016 < GlobalSkyModelBase
             % TODO: Rotate the map...
             
             
+        end
+
+        function Npix = get.Npix(obj)
+            if isempty(obj.generated_map_data)
+                Npix = size(obj.map_ni,1);
+            else
+                Npix = size(obj.generated_map_data,1);
+            end
         end
         
         function [obj, map_out] = generate(obj,freqs)

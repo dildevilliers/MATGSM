@@ -11,14 +11,21 @@ classdef IsotropicMap < GlobalSkyModelBase
         Tg0(1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 20; % K
         v0(1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 408; % MHz   
     end
+
+    properties (Dependent = true)
+        Npix
+    end
     
     methods 
-        function obj = IsotropicMap(freq_unit, spectral_index, Tg0, v0)
+        function obj = IsotropicMap(freq_unit, spectral_index, Tg0, v0, resIdx)
             % Isotropic class constructor method
 
             % Inputs
             % - freq_unit: {'Hz',('MHz'),'GHz'}
             % - spectral_index: negative real number (-2.6)
+            % - Tg0: Reference temperature in (K) at...
+            % - v0: the reference frequency in MHz
+            % - resIdx: the resolution index (integer between 1 and 10)
             %
             % Outputs
             % - obj:    IsotropicMap object
@@ -40,10 +47,25 @@ classdef IsotropicMap < GlobalSkyModelBase
         
             if nargin > 0 && ~isempty(freq_unit), obj.freq_unit = freq_unit; end
             if nargin > 1 && ~isempty(spectral_index), obj.spectral_index = spectral_index; end
-            if nargin > 2 && ~isempty(spectral_index), obj.Tg0 = Tg0; end
-            if nargin > 3 && ~isempty(spectral_index), obj.v0 = v0; end
+            if nargin > 2 && ~isempty(Tg0), obj.Tg0 = Tg0; end
+            if nargin > 3 && ~isempty(v0), obj.v0 = v0; end
+            if nargin > 4 && ~isempty(resIdx)
+                assert(mod(resIdx,1) == 0 && resIdx > 0,'resIdx must be a positive integer')
+                rI = resIdx;
+            else
+                rI = 8;
+            end
+            Npixels = 12.*(2.^rI).^2;
             
-            obj.data = ones(3145728,1);
+            obj.data = ones(Npixels,1);
+        end
+
+        function Npix = get.Npix(obj)
+            if isempty(obj.generated_map_data)
+                Npix = size(obj.data,1);
+            else
+                Npix = size(obj.generated_map_data,1);
+            end
         end
         
         function [obj, map_out] = generate(obj,freqs)

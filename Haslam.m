@@ -10,6 +10,10 @@ classdef Haslam < GlobalSkyModelBase
         
         Tcmb(1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 2.73
     end
+
+    properties (Dependent = true)
+        Npix
+    end
     
     methods 
         function obj = Haslam(freq_unit,spectral_index)
@@ -96,6 +100,14 @@ classdef Haslam < GlobalSkyModelBase
             
             obj.generated_map_data = map_out;
             obj.generated_map_freqs = freqs;
+        end
+
+        function Npix = get.Npix(obj)
+            if isempty(obj.generated_map_data)
+                Npix = size(obj.data,1);
+            else
+                Npix = size(obj.generated_map_data,1);
+            end
         end
         
         function obj = setTcmb(obj,Tcmb)

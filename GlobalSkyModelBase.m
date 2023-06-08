@@ -43,6 +43,7 @@ classdef GlobalSkyModelBase
     
     properties (Dependent = true)
         Nside 
+        resIdx
         Nf
         signPhi
         julDate
@@ -69,9 +70,13 @@ classdef GlobalSkyModelBase
         end
         
         function Nside = get.Nside(obj)
-            Nside = nPix2nSide(size(obj.generated_map_data,1));
+            Nside = nPix2nSide(obj.Npix);
         end
-        
+
+        function resIdx = get.resIdx(obj)
+            resIdx = log2(obj.Nside);
+        end
+
         function Nf = get.Nf(obj)
             Nf = size(obj.generated_map_data,2);
         end
