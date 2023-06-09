@@ -86,7 +86,7 @@ classdef IsotropicMap < GlobalSkyModelBase
             assert(min(size(freqs))  == 1, 'freqs must be vector')
             freqs = freqs(:).';   % Force row vector
             freqs_mhz = freqs.*obj.freqScale;
-            map_out = ((obj.Tg0.*(obj.v0./freqs_mhz).^(obj.spectral_index) + obj.Tcmb)).*obj.data;
+            map_out = ((obj.Tg0.*(freqs_mhz./obj.v0).^(obj.spectral_index) + obj.Tcmb)).*obj.data;
             
             obj.generated_map_data = map_out;
             obj.generated_map_freqs = freqs;
