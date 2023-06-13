@@ -6,10 +6,13 @@ classdef IsotropicMap < GlobalSkyModelBase
     
     properties (SetAccess = private)
         spectral_index(1,1) double {mustBeReal,mustBeFinite,mustBeNegative} = -2.6
-        data(:,1) double        
         Tcmb(1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 2.73
         Tg0(1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 20; % K
         v0(1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 408; % MHz   
+    end
+
+    properties (SetAccess = private, Hidden = true)
+        resIdx_Input(1,1) {mustBeReal, mustBeInteger, mustBePositive} = 8  % Input resolution index
     end
 
     properties (Dependent = true)
@@ -49,20 +52,12 @@ classdef IsotropicMap < GlobalSkyModelBase
             if nargin > 1 && ~isempty(spectral_index), obj.spectral_index = spectral_index; end
             if nargin > 2 && ~isempty(Tg0), obj.Tg0 = Tg0; end
             if nargin > 3 && ~isempty(v0), obj.v0 = v0; end
-            if nargin > 4 && ~isempty(resIdx)
-                assert(mod(resIdx,1) == 0 && resIdx > 0,'resIdx must be a positive integer')
-                rI = resIdx;
-            else
-                rI = 8;
-            end
-            Npixels = 12.*(2.^rI).^2;
-            
-            obj.data = ones(Npixels,1);
+            if nargin > 4 && ~isempty(resIdx), obj.resIdx_Input = resIdx; end
         end
 
         function Npix = get.Npix(obj)
             if isempty(obj.generated_map_data)
-                Npix = size(obj.data,1);
+                Npix = 12.*(2.^obj.resIdx_Input).^2;
             else
                 Npix = size(obj.generated_map_data,1);
             end
@@ -83,12 +78,13 @@ classdef IsotropicMap < GlobalSkyModelBase
             %     Global sky model in healpix format, with NSIDE=512. Output map
             %     is in galactic coordinates, and in antenna temperature units (K).
             
+            if nargin < 2 || isempty(freqs), freqs = obj.v0; end
             assert(min(size(freqs))  == 1, 'freqs must be vector')
             freqs = freqs(:).';   % Force row vector
             freqs_mhz = freqs.*obj.freqScale;
-            map_out = ((obj.Tg0.*(freqs_mhz./obj.v0).^(obj.spectral_index) + obj.Tcmb)).*obj.data;
+            map_out = obj.Tg0.*(freqs_mhz./obj.v0).^(obj.spectral_index) + obj.Tcmb;
             
-            obj.generated_map_data = map_out;
+            obj.generated_map_data = bsxfun(@times,ones(obj.Npix,1),map_out);
             obj.generated_map_freqs = freqs;
         end
         
