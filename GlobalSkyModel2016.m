@@ -113,6 +113,10 @@ classdef GlobalSkyModel2016 < GlobalSkyModelBase
             %         Global sky model in healpix format, with NSIDE=1024. Output map
             %         is in galactic coordinates, ring format.
             
+            if nargin < 2 || isempty(freqs)
+                freqs = obj.v0; 
+                obj.freq_unit = 'MHz';
+            end
             assert(min(size(freqs))  == 1, 'freqs must be vector')
             freqs_ghz = freqs.*obj.freqScale./1e3;
             assert(min(freqs_ghz) >= 0.01 && min(freqs_ghz) <= 5000, 'Frequency values lie outside 10 MHz < f < 5 THz')

@@ -14,7 +14,7 @@ classdef Haslam < GlobalSkyModelBase
     properties (Dependent = true)
         Npix
     end
-    
+
     methods 
         function obj = Haslam(freq_unit,spectral_index)
             % HASLAM class constructor method
@@ -61,7 +61,7 @@ classdef Haslam < GlobalSkyModelBase
             %
             % Example
             %   Hmap = Haslam;
-            %   Hmap = Hmap.generate(408);
+            %   Hmap = Hmap.generate;
             %   Hamp.view(1,true)
         
             if nargin > 0 && ~isempty(freq_unit), obj.freq_unit = freq_unit; end
@@ -92,11 +92,15 @@ classdef Haslam < GlobalSkyModelBase
             %     Global sky model in healpix format, with NSIDE=512. Output map
             %     is in galactic coordinates, and in antenna temperature units (K).
             
+            if nargin < 2 || isempty(freqs)
+                freqs = obj.v0; 
+                obj.freq_unit = 'MHz';
+            end
             assert(min(size(freqs))  == 1, 'freqs must be vector')
             freqs = freqs(:).';      % Force row
             freqs_mhz = freqs.*obj.freqScale;
             
-            map_out = (obj.data - obj.Tcmb).*(freqs_mhz./408.0).^(obj.spectral_index) + obj.Tcmb;
+            map_out = (obj.data - obj.Tcmb).*(freqs_mhz./obj.v0).^(obj.spectral_index) + obj.Tcmb;
             
             obj.generated_map_data = map_out;
             obj.generated_map_freqs = freqs;

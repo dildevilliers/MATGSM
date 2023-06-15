@@ -53,6 +53,7 @@ classdef GlobalSkyModelBase
         astroGrids = {'Horiz','RAdec','GalLongLat'}
         verifyMarkers = {'GC','VelaSNR','Cygnus','Cas-A','Cen-A','Tau-A','Orion-A','LMC','SMC'}
         verifyMarkerGalCoors = [0,0; -96,-3.3; 77,2; 111.75,-2.11; -50.5,19.42; -175.42,-5.79; -151,-19.36; -79.5,-32.85; -57.2,-44.3];
+        v0 = 408;
     end
     
     methods
@@ -232,6 +233,46 @@ classdef GlobalSkyModelBase
                     obj.xy = wrap2pi([obj.signPhi,1].*xyHor);
                 end
             end
+        end
+
+        function T = interpOnHealPixGrid(obj,freqs)
+            % interpOnHealPixGrid returns a temperature map evaluated on the native HealPix grid of the current internal gridType
+            % No fancy interpolation is done - just grab whatever the value is in the calculated pixel
+
+            if nargin < 2 || isempty(freqs)
+                if isempty(obj.generated_map_data), obj = obj.generate; end
+            else
+                obj = obj.generate(freqs);
+            end
+
+            if strcmp(obj.gridType,'GalLongLat')
+                T = obj.generated_map_data;
+            else
+                % First get angles for general HealPix map
+                tp = pix2ang(obj.Nside);
+                tp = [tp{:}];
+                th = tp(1,:).';
+                ph = tp(2,:).';
+
+                if strcmp(obj.gridType,'Horiz')
+                    az = -wrap2pi(ph);
+                    el = pi/2 - th;
+                    AzEl = [az,el];
+                    RADec = wrap2pi(horiz_coo(AzEl,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
+                elseif strcmp(obj.gridType,'RAdec')
+                    RA = wrap2pi(ph);
+                    Dec = pi/2 - th;
+                    RADec = [RA,Dec];
+                end
+
+                longLat = celestial.coo.coco(RADec,'j2000.0','g','r','r');
+                phGal = longLat(:,1);
+                thGal = pi/2 - longLat(:,2);
+                thph_Gal = [thGal.';phGal.'];
+                pix = ang2pix(obj.Nside,thph_Gal).';
+                T = obj.generated_map_data(pix,:);
+            end
+
         end
         
         function obj = underSample(obj,sampleFactor)
