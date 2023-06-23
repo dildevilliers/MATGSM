@@ -7,6 +7,7 @@ classdef GlobalSkyModel < GlobalSkyModelBase
         
         pca_map_data(:,:)
         interp_comps(1,4) cell
+        resIdxMax
 %         generated_map_data(:,:) double = []
 %         generated_map_freqs(1,:) double = []
     end
@@ -79,6 +80,7 @@ classdef GlobalSkyModel < GlobalSkyModelBase
             obj.dataPath = [P,'\data\gsm_components.h5'];
 
             obj = obj.update_interpolants;
+            obj.resIdxMax = obj.resIdx;
         end
 
         function Npix = get.Npix(obj)

@@ -9,6 +9,7 @@ classdef Haslam < GlobalSkyModelBase
         data(:,1) double
         
         Tcmb(1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 2.73
+        resIdxMax
     end
 
     properties (Dependent = true)
@@ -75,6 +76,8 @@ classdef Haslam < GlobalSkyModelBase
             d_ =  fitsread(obj.dataPath,'BinaryTable');
             d_ = transpose(d_{1});
             obj.data = d_(:);
+
+            obj.resIdxMax = obj.resIdx;
         end
         
         function [obj, map_out] = generate(obj,freqs)

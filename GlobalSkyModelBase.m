@@ -17,6 +17,10 @@ classdef GlobalSkyModelBase
         generated_map_freqs(1,:) double = []
     end
     
+    properties (Abstract = true, SetAccess = private)
+        resIdxMax(1,1) double {mustBeInteger}
+    end
+
     properties (SetAccess = private)
         gridType = 'GalLongLat'        % Can be set to {'Horiz','RAdec','GalLongLat'} setCoorSys
         location(1,3) double = [(-30.721745), (21.411701),  300.0000]  % Earth location in [Lat(deg) Long(deg) mASL]
@@ -25,6 +29,7 @@ classdef GlobalSkyModelBase
     
     properties (SetAccess = protected, Hidden = true)
         dataPath
+        v0 = 408;
     end
          
     properties (SetAccess = private, Hidden = true)
@@ -53,7 +58,6 @@ classdef GlobalSkyModelBase
         astroGrids = {'Horiz','RAdec','GalLongLat'}
         verifyMarkers = {'GC','VelaSNR','Cygnus','Cas-A','Cen-A','Tau-A','Orion-A','LMC','SMC'}
         verifyMarkerGalCoors = [0,0; -96,-3.3; 77,2; 111.75,-2.11; -50.5,19.42; -175.42,-5.79; -151,-19.36; -79.5,-32.85; -57.2,-44.3];
-        v0 = 408;
     end
     
     methods

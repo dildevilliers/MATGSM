@@ -9,6 +9,8 @@ classdef GlobalSkyModel2016 < GlobalSkyModelBase
         
         map_ni(:,:)
         spec_nf(:,:)
+
+        resIdxMax
     end
     
     properties (Constant = true, Hidden = true)
@@ -86,9 +88,7 @@ classdef GlobalSkyModel2016 < GlobalSkyModelBase
             end
             obj.spec_nf = h5read(obj.dataPath,'/spectra');
             
-            % TODO: Rotate the map...
-            
-            
+            obj.resIdxMax = obj.resIdx;
         end
 
         function Npix = get.Npix(obj)

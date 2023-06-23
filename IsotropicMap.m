@@ -8,7 +8,8 @@ classdef IsotropicMap < GlobalSkyModelBase
         spectral_index(1,1) double {mustBeReal,mustBeFinite,mustBeNegative} = -2.6
         Tcmb(1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 2.73
         Tg0(1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 20; % K
-        v0(1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 408; % MHz   
+%         v0(1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 408; % MHz
+        resIdxMax
     end
 
     properties (SetAccess = private, Hidden = true)
@@ -53,6 +54,8 @@ classdef IsotropicMap < GlobalSkyModelBase
             if nargin > 2 && ~isempty(Tg0), obj.Tg0 = Tg0; end
             if nargin > 3 && ~isempty(v0), obj.v0 = v0; end
             if nargin > 4 && ~isempty(resIdx), obj.resIdx_Input = resIdx; end
+
+            obj.resIdxMax = obj.resIdx;
         end
 
         function Npix = get.Npix(obj)
