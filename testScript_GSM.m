@@ -74,6 +74,13 @@ T4 = G4.interpOnHealPixGrid();
 figure, healpixPlotMollweide(log2(T4))
 title('Resampled on the Local grid')
 
+projType = 'TrueView';
+lookingOut = false;
+figure, healpixPlotProj(log2(T3),projType,lookingOut)
+title('Resampled on the Horizontal grid')
+figure, healpixPlotProj(log2(T4),projType,lookingOut)
+title('Resampled on the Local grid')
+
 figure
 G4.plotLocalCoor
 

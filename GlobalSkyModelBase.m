@@ -306,11 +306,10 @@ classdef GlobalSkyModelBase
                         % Go from local to horizontal
                         angEulerRev = getEulerangBetweenCoors(CoordinateSystem,obj.localCoor);
                         [phth] = rotEulersph([ph.';th.'],angEulerRev).';
-                        [az,el] = PhTh2Horiz(phth(:,1),phth(:,2));
-                    else
-                        az = -wrap2pi(ph);
-                        el = pi/2 - th;
+                        ph = phth(:,1); th = phth(:,2);
                     end
+                    az = -wrap2pi(ph);
+                    el = pi/2 - th;
                     AzEl = [az,el];
                     RADec = wrap2pi(horiz_coo(AzEl,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
                 elseif strcmp(obj.gridType,'RAdec')
@@ -392,6 +391,29 @@ classdef GlobalSkyModelBase
             z = [];  % for in case later...
         end
         
+        function obj = getFi(obj,freqIndex)
+            % GETFI Returns an object only containing the results in
+            % freqIndex.
+
+            if nargin < 2 || isempty(freqIndex), freqIndex = 1; end
+
+            if isempty(obj.generated_map_data), obj = obj.generate; end
+
+            assert(max(freqIndex) <= obj.Nf,'freqIndex must be smaller than the number of frequencies in the object')
+
+            obj.generated_map_data = obj.generated_map_data(:,freqIndex);
+        end
+
+        function obj = setGround(obj,groundVal)
+            % setGround sets the ground region temperature to the provided scalar number
+            
+            if nargin < 1 || isempty(groundVal), groundVal = 0; end
+            assert(numel(groundVal) == 1,'groundVal must be scalar')
+            
+            if isempty(obj.generated_map_data), obj = obj.generate; end
+            obj.generated_map_data(obj.idxGround,:) = groundVal;
+        end
+
         function plotProj(obj,idx,logged)
             % PLOTPROJ plots a projection of the map
             % plotProj(obj,idx,logged)
@@ -572,6 +594,7 @@ classdef GlobalSkyModelBase
             obj.localCoor.plot
             title('Local Coordinates [x,y,z] in global frame [n,w,u]')
         end
+        
         function view(obj, idx, logged)
             %     View generated map using mollweide projection.
             % 
