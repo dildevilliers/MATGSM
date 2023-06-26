@@ -25,6 +25,7 @@ classdef GlobalSkyModelBase
         gridType = 'GalLongLat'        % Can be set to {'Horiz','RAdec','GalLongLat'} setCoorSys
         location(1,3) double = [(-30.721745), (21.411701),  300.0000]  % Earth location in [Lat(deg) Long(deg) mASL]
         UTCtime(1,1) datetime = datetime(2018,1,1,0,0,0)
+        localCoor(1,1) CoordinateSystem = CoordinateSystem   % Local coordinate system referenced to [x0,y0,z0] = [N,W,U]
     end
     
     properties (SetAccess = protected, Hidden = true)
@@ -33,7 +34,7 @@ classdef GlobalSkyModelBase
     end
          
     properties (SetAccess = private, Hidden = true)
-        xy(:,2) double  % The current local grid
+        xy(:,2) double  % The current local grid in [long/lat] coordinates on a sphere
     end
     
     properties (Dependent = true, Hidden = true)
@@ -44,6 +45,8 @@ classdef GlobalSkyModelBase
        xyGridAz 
        xyVerifyMarkers
        idxGround
+
+       angEuler % Euler angle to go to the local coordinate system
     end
     
     properties (Dependent = true)
@@ -55,7 +58,7 @@ classdef GlobalSkyModelBase
     end
     
     properties (Constant = true, Hidden = true)
-        astroGrids = {'Horiz','RAdec','GalLongLat'}
+        astroGrids = {'Local','Horiz','RAdec','GalLongLat'}
         verifyMarkers = {'GC','VelaSNR','Cygnus','Cas-A','Cen-A','Tau-A','Orion-A','LMC','SMC'}
         verifyMarkerGalCoors = [0,0; -96,-3.3; 77,2; 111.75,-2.11; -50.5,19.42; -175.42,-5.79; -151,-19.36; -79.5,-32.85; -57.2,-44.3];
     end
@@ -94,6 +97,8 @@ classdef GlobalSkyModelBase
                     signPhi = -1;
                 case 'Horiz'
                     signPhi = 1;
+                case 'Local'
+                    signPhi = 1;
             end
         end
         
@@ -110,6 +115,10 @@ classdef GlobalSkyModelBase
             idxGround = find(obj.xy(:,2) < 0);
         end
         
+        function angEuler = get.angEuler(obj)
+            angEuler = getEulerangBetweenCoors(obj.localCoor);
+        end
+
         function xyHorizon = get.xyHorizon(obj)
             % Work in horizontal coordinates
             % First four elements are the cardinal points for
@@ -119,11 +128,16 @@ classdef GlobalSkyModelBase
             
             xyHorizon = [az,alt];
             if ~strcmp(obj.gridType,'Horiz')
-                % Go to equatorial
-                xyHorizon = wrap2pi(horiz_coo(xyHorizon,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
-                if strcmp(obj.gridType,'GalLongLat')
-                    % Go to galactic
-                    xyHorizon = celestial.coo.coco(xyHorizon,'j2000.0','g','r','r');
+                if strcmp(obj.gridType,'Local')
+                    [az,alt] = obj.horiz2local(az,alt);
+                    xyHorizon = [az,alt];
+                else
+                    % Go to equatorial
+                    xyHorizon = wrap2pi(horiz_coo(xyHorizon,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
+                    if strcmp(obj.gridType,'GalLongLat')
+                        % Go to galactic
+                        xyHorizon = celestial.coo.coco(xyHorizon,'j2000.0','g','r','r');
+                    end
                 end
             end
             xyHorizon = wrap2pi([obj.signPhi,1].*xyHorizon);
@@ -144,21 +158,27 @@ classdef GlobalSkyModelBase
             for nnLat = 1:xyGridAz.Nlat
                 az = linspace(-pi,pi,Nplot).';
                 alt = ones(size(az)).*xyGridAz.latVect(nnLat);
+                if strcmp(obj.gridType,'Local')
+                    [az,alt] = obj.horiz2local(az,alt);
+                end
                 gridLines(:,:,nnLat) = [az,alt];
             end
             for nnLong = 1:xyGridAz.Nlong
                 alt = linspace(-pi/2,pi/2,Nplot).';
                 az = ones(size(alt)).*xyGridAz.longVect(nnLong);
+                if strcmp(obj.gridType,'Local')
+                    [az,alt] = obj.horiz2local(az,alt);
+                end
                 gridLines(:,:,xyGridAz.Nlat + nnLong) = [az,alt];
             end
            
             gridLines = reshape(gridLines,Nplot*xyGridAz.Nlines,2);
-            if ~strcmp(obj.gridType,'Horiz')
-                gridLines = wrap2pi(horiz_coo(gridLines,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
-                if strcmp(obj.gridType,'GalLongLat')
-                    gridLines = celestial.coo.coco(gridLines,'j2000.0','g','r','r');
-                end
-            end
+%             if ~any(strcmp(obj.gridType,{'Horiz','Local'}))
+%                 gridLines = wrap2pi(horiz_coo(gridLines,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
+%                 if strcmp(obj.gridType,'GalLongLat')
+%                     gridLines = celestial.coo.coco(gridLines,'j2000.0','g','r','r');
+%                 end
+%             end
             gridLines = reshape(gridLines,Nplot,2,xyGridAz.Nlines);
             xyGridAz.gridLines = wrap2pi([obj.signPhi,1].*gridLines);
         end
@@ -168,8 +188,12 @@ classdef GlobalSkyModelBase
             moonStruct = celestial.SolarSys.get_moon(obj.julDate,deg2rad(fliplr(obj.location(1:2))));
             xySunMoon = [sunStruct.RA,sunStruct.Dec;moonStruct.RA,moonStruct.Dec];
             switch obj.gridType
-                case 'Horiz'
+                case {'Horiz','Local'}
                     xySunMoon = [sunStruct.Az,sunStruct.Alt;moonStruct.Az,moonStruct.Alt];
+                    if strcmp(obj.gridType,'Local')
+                        [az,alt] = obj.horiz2local(xySunMoon(:,1),xySunMoon(:,2));
+                        xySunMoon = [az,alt];
+                    end
                 case 'GalLongLat'
                     xySunMoon = celestial.coo.coco(xySunMoon,'j2000.0','g','r','r');
             end
@@ -184,9 +208,13 @@ classdef GlobalSkyModelBase
             else 
                 xyVerifyMarkersEq = celestial.coo.coco(xyVerifyMarkersGC,'g','j2000.0','r','r');
                 xyVerifyMarkers = wrap2pi([obj.signPhi,1].*xyVerifyMarkersEq);
-                if any(strcmp(obj.gridType,{'Horiz'}))  % Update if needed
+                if any(strcmp(obj.gridType,{'Horiz','Local'}))  % Update if needed
                     xyVerifyMarkersHor = wrap2pi(celestial.coo.horiz_coo(xyVerifyMarkersEq,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'h'));
                     xyVerifyMarkers =  wrap2pi([obj.signPhi,1].*xyVerifyMarkersHor);
+                    if strcmp(obj.gridType,'Local')
+                        [az,alt] = obj.horiz2local(xyVerifyMarkers(:,1),xyVerifyMarkers(:,2));
+                        xyVerifyMarkers = [az,alt];
+                    end
                 end
             end
         end
@@ -199,7 +227,7 @@ classdef GlobalSkyModelBase
             % SETTIME sets the time
             % obj = setTime(obj,UTCtime)
             
-            obj.UTCtime = UTCtime;
+            if nargin > 1 && ~isempty(UTCtime), obj.UTCtime = UTCtime; end
             if ~isempty(obj.xy)
                 obj = obj.changeGrid(obj.gridType);  % This always goes from gal -> whereever, so update will happen automatically
             end
@@ -211,12 +239,23 @@ classdef GlobalSkyModelBase
             % location is a 3 element vector: [Lat(deg) Long(deg) mASL]
             
             %obj.location  = location;
-            obj.location = setLocation(location);
+            if nargin > 1 && ~isempty(location), obj.location = setLocation(location); end
             if ~isempty(obj.xy)
                 obj = obj.changeGrid(obj.gridType);  % This always goes from gal -> whereever, so update will happen automatically
             end
         end
         
+        function obj = setLocalCoor(obj,localCoor)
+            % SETLOCALCOOR sets the local coordinate system of the observer
+            % obj = setLocalCoor(obj,localCoor)
+            % localCoor is a CoordinateSystem referenced to the [x,y,z] = [N,W,U] base
+
+            if nargin > 1 && ~isempty(localCoor), obj.localCoor = localCoor; end
+             if ~isempty(obj.xy)
+                obj = obj.changeGrid(obj.gridType);  % This always goes from gal -> whereever, so update will happen automatically
+            end
+        end
+
         function obj = changeGrid(obj,gridType)
             % CHANGEGRID sets the coordinate system grid
             % obj = changeGrid(obj,gridType)
@@ -232,9 +271,13 @@ classdef GlobalSkyModelBase
                 % Always calculate this - needed for all three transforms
                 xyEq = celestial.coo.coco(obj.longlat,'g','j2000.0','r','r');
                 obj.xy = wrap2pi([obj.signPhi,1].*xyEq);
-                if any(strcmp(gridType,{'Horiz'}))  % Update if needed
+                if any(strcmp(gridType,{'Horiz','Local'}))  % Update if needed
                     xyHor = wrap2pi(horiz_coo(xyEq,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'h'));
                     obj.xy = wrap2pi([obj.signPhi,1].*xyHor);
+                    if strcmp(gridType,'Local')
+                        [az,alt] = obj.horiz2local(obj.xy(:,1),obj.xy(:,2));
+                        obj.xy = [az,alt];
+                    end
                 end
             end
         end
@@ -258,9 +301,16 @@ classdef GlobalSkyModelBase
                 th = tp(1,:).';
                 ph = tp(2,:).';
 
-                if strcmp(obj.gridType,'Horiz')
-                    az = -wrap2pi(ph);
-                    el = pi/2 - th;
+                if any(strcmp(obj.gridType,{'Horiz','Local'}))
+                    if strcmp(obj.gridType,'Local')
+                        % Go from local to horizontal
+                        angEulerRev = getEulerangBetweenCoors(CoordinateSystem,obj.localCoor);
+                        [phth] = rotEulersph([ph.';th.'],angEulerRev).';
+                        [az,el] = PhTh2Horiz(phth(:,1),phth(:,2));
+                    else
+                        az = -wrap2pi(ph);
+                        el = pi/2 - th;
+                    end
                     AzEl = [az,el];
                     RADec = wrap2pi(horiz_coo(AzEl,obj.julDate,deg2rad(fliplr(obj.location(1:2))),'e'));
                 elseif strcmp(obj.gridType,'RAdec')
@@ -372,17 +422,19 @@ classdef GlobalSkyModelBase
             colorbar('location','SouthOutside')
         end
         
-        function plotSkyView(obj,idx,logged,details)
+        function plotSkyView(obj,idx,logged,details,localFlag)
             % PLOTSKYVIEW plots the sky view at the current time and place
             % plotSkyView(obj,idx,logged,paramsPlot)
             % idx is the frequency index to plot
             % logged is logical to plot in log scale (true)
             % details is logicals requesting plotting of 
             %   [Directions, Sun, Moon, verifyMarkers]
+            % localFlag can be set to true to plot the SkyView along the axis of the localCoor
             
             if nargin < 2 || isempty(idx), idx = 1; end
             if nargin < 3 || isempty(logged), logged = true; end
             if nargin < 4 || isempty(details), details = [0,0,0,0]; end
+            if nargin < 5 || isempty(localFlag), localFlag = false; end
             
             if numel(details) < 4
                 details_ = zeros(1,4);
@@ -400,7 +452,14 @@ classdef GlobalSkyModelBase
             obj = obj.changeGrid('Horiz');
             obj.hideGround = true;
             valInd = find(obj.xy(:,2) >= 0);
-            [xyProj,~] = obj.project(obj.xy(valInd,:));
+            
+            if localFlag
+                objLocal = obj.changeGrid('Local');
+            else
+                objLocal = obj;
+            end
+
+            [xyProj,~] = obj.project(objLocal.xy(valInd,:));
             
             gridDelaunay = delaunay(xyProj(:,1),xyProj(:,2));
             h = trisurf(gridDelaunay,xyProj(:,1),xyProj(:,2),gmap(valInd).*0,gmap(valInd));
@@ -410,10 +469,10 @@ classdef GlobalSkyModelBase
             view([0,90])
             hold on
             colorbar('location','SouthOutside')
-            if details(1), obj.plotDirections('k'); end
-            if details(2) && obj.xySunMoon(1,2) >= 0, obj.plotSun; end
-            if details(3) && obj.xySunMoon(2,2) >= 0, obj.plotMoon; end
-            if details(4), obj.plotVerifyMarkers; end
+            if details(1), objLocal.plotDirections('k'); end
+            if details(2) && obj.xySunMoon(1,2) >= 0, objLocal.plotSun; end
+            if details(3) && obj.xySunMoon(2,2) >= 0, objLocal.plotMoon; end
+            if details(4), objLocal.plotVerifyMarkers; end
         end
         
         function plotHorizon(obj,style)
@@ -433,11 +492,11 @@ classdef GlobalSkyModelBase
             % style is the linestyle of the plot ('w-')
             % Not very reliable yet
             
-            if nargin < 2 || isempty(style), style = 'w-'; end
+            if nargin < 2 || isempty(style), style = 'w.'; end
             
             for ll = 1:obj.xyGridAz.Nlines
                 xyProj = obj.project(obj.xyGridAz.gridLines(:,:,ll));
-                plot(xyProj(:,1),xyProj(:,2),style,'linewidth',0.5), hold on
+                plot(xyProj(:,1),xyProj(:,2),style,'linewidth',0.5,'markersize',0.5), hold on
             end
         end
         
@@ -504,6 +563,15 @@ classdef GlobalSkyModelBase
             end
         end
             
+        function plotLocalCoor(obj)
+            % plotLocalCoor plots the local coordinate system for reference
+            
+            C = CoordinateSystem;
+            C.axisText = 'nwu';
+            C.plot
+            obj.localCoor.plot
+            title('Local Coordinates [x,y,z] in global frame [n,w,u]')
+        end
         function view(obj, idx, logged)
             %     View generated map using mollweide projection.
             % 
@@ -536,6 +604,15 @@ classdef GlobalSkyModelBase
         
         function write_fits(obj,filename)
            fitswrite(obj.generated_map_data,filename); 
+        end
+    end
+
+    methods (Access = private)
+        function [az,el] = horiz2local(obj,az,el)
+            % horiz2local rotates the input az el coordinates to the local az el coordinates using the localCoor in the object
+            [ph,th] = Horiz2PhTh(az,el);
+            [phth] = rotEulersph([ph.';th.'],obj.angEuler).';
+            [az,el] = PhTh2Horiz(phth(:,1),phth(:,2));
         end
     end
     
